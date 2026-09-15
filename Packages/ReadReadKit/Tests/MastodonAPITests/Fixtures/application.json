@@ -1,0 +1,11 @@
+{
+  "id": "12345",
+  "name": "ReadRead",
+  "website": null,
+  "scopes": ["read:statuses", "read:accounts", "read:lists", "read:bookmarks", "read:favourites"],
+  "redirect_uris": ["readread://oauth-callback"],
+  "redirect_uri": "readread://oauth-callback",
+  "client_id": "cid-abc123",
+  "client_secret": "csecret-xyz789",
+  "client_secret_expires_at": 0
+}

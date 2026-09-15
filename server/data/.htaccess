@@ -1,0 +1,2 @@
+# Belt and braces: even if the parent rules are missing, the database is not downloadable.
+Require all denied

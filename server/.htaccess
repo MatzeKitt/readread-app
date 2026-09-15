@@ -1,0 +1,32 @@
+# Route every request to the front controller.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Apache with mod_php drops the Authorization header unless it is passed through explicitly.
+    # Without this the service answers 401 to every correctly-authenticated request, which is a
+    # deeply confusing way to fail.
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ public/index.php [QSA,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "no-referrer"
+</IfModule>
+
+# Never serve the database, the schema, the configuration, or the CLI over HTTP.
+<FilesMatch "\.(sqlite|sqlite-wal|sqlite-shm|sql)$">
+    Require all denied
+</FilesMatch>
+
+# `.env` holds the database path. Apache already refuses dotfiles under most default configs, but
+# "most" is not a guarantee worth resting a config file on.
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>
+
+RedirectMatch 404 ^/(data|src|bin|tests)/

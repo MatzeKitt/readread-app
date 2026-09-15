@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- macOS only; ignored on iOS, where sandboxing is implicit. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- Outbound only. The app is a client of FreshRSS, Mastodon and the sync endpoint;
+	     it never listens, so no server entitlement is requested. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+</dict>
+</plist>

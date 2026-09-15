@@ -1,0 +1,125 @@
+name: ReadRead
+
+options:
+  bundleIdPrefix: com.kittmedia
+  createIntermediateGroups: true
+  developmentLanguage: en
+  # German ships as a String Catalog in the app target. The UI strings themselves live in
+  # ReadReadKit, where SwiftUI resolves a `LocalizedStringKey` against `Bundle.main` — the app
+  # bundle — so the catalogue belongs here rather than beside the views.
+  knownRegions: [en, de, Base]
+  deploymentTarget:
+    iOS: "26.0"
+    macOS: "26.0"
+  groupSortPosition: top
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+
+    # Ad-hoc signing ("Sign to Run Locally") for development on both platforms.
+    #
+    # Automatic signing wants a "Mac Development" certificate for macOS, which the available
+    # "Apple Development" identity does not satisfy, and `CODE_SIGN_STYLE` does not reliably honour
+    # `[sdk=…]` conditionals — so a per-platform split here does not work. Ad-hoc still applies the
+    # sandbox and network entitlements, and the iOS Simulator needs no signing at all, so local
+    # behaviour on both platforms is faithful.
+    #
+    # To run on an iOS device or to distribute: set DEVELOPMENT_TEAM to DBN7SA2WV6 and
+    # CODE_SIGN_STYLE to Automatic.
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+    PROVISIONING_PROFILE_SPECIFIER: ""
+    GCC_TREAT_WARNINGS_AS_ERRORS: NO
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+
+packages:
+  ReadReadKit:
+    path: Packages/ReadReadKit
+
+targets:
+  ReadRead:
+    type: application
+    supportedDestinations: [iOS, macOS]
+    sources:
+      - path: App
+        excludes:
+          - "Resources/AppIcon.icon/**"
+      # Declared as a single file reference, not a group. An Icon Composer icon is a package, and
+      # left to recurse XcodeGen would add its `icon.json` and layer PNGs as loose resources — the
+      # icon would silently revert to nothing while the artwork shipped as stray files.
+      - path: App/Resources/AppIcon.icon
+        type: file
+    dependencies:
+      - package: ReadReadKit
+        product: ReadReadUI
+    info:
+      path: App/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: ReadRead
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        ITSAppUsesNonExemptEncryption: false
+        LSApplicationCategoryType: public.app-category.news
+        CFBundleURLTypes:
+          - CFBundleURLName: $(PRODUCT_BUNDLE_IDENTIFIER).oauth
+            CFBundleURLSchemes: [readread]
+        NSAppTransportSecurity:
+          # No blanket exception: this only permits http:// to .local / loopback /
+          # unqualified LAN hosts, so a self-hosted FreshRSS on the LAN works while
+          # public traffic still requires HTTPS.
+          NSAllowsLocalNetworking: true
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - $(PRODUCT_BUNDLE_IDENTIFIER).refresh
+        UILaunchScreen:
+          UIColorName: ""
+        UISupportedInterfaceOrientations~iphone:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kittmedia.ReadRead
+        PRODUCT_NAME: ReadRead
+        # Repeated from the project level because XcodeGen writes its own
+        # `CODE_SIGN_IDENTITY = "iPhone Developer"` onto app targets, which would otherwise win.
+        CODE_SIGN_IDENTITY: "-"
+        GENERATE_INFOPLIST_FILE: NO
+        # Resolves to `App/Resources/AppIcon.icon`. An Icon Composer icon is a top-level asset
+        # catalogue input in its own right (`folder.iconcomposer.icon` is based on
+        # `folder.abstractassetcatalog`), so it sits beside `Assets.xcassets` rather than inside
+        # it — nested in the catalogue, actool ignores it silently and emits no icon at all.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: NO
+        CODE_SIGN_ENTITLEMENTS: App/Resources/ReadRead.entitlements
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+        Release:
+          SWIFT_COMPILATION_MODE: wholemodule
+
+schemes:
+  ReadRead:
+    build:
+      targets:
+        ReadRead: all
+    run:
+      config: Debug
+    archive:
+      config: Release

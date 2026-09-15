@@ -1,0 +1,3341 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%@ boosted": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ hat geboostet"
+          }
+        }
+      }
+    },
+    "%@ has no usable server address.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ hat keine nutzbare Serveradresse."
+          }
+        }
+      }
+    },
+    "%@ has not allowed liking and boosting yet. Sign in to it again in Settings to grant it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ erlaubt Favorisieren und Boosten noch nicht. Dazu in den Einstellungen erneut bei diesem Konto anmelden."
+          }
+        }
+      }
+    },
+    "%@ is no longer authorised. Sign in to it again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ist nicht mehr autorisiert. Erneut anmelden."
+          }
+        }
+      }
+    },
+    "%@ is signed out. Sign in again to like and boost.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ist abgemeldet. Zum Favorisieren und Boosten erneut anmelden."
+          }
+        }
+      }
+    },
+    "%@ shortcut": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurzbefehl für %@"
+          }
+        }
+      }
+    },
+    "%@ · Closed": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · Beendet"
+          }
+        }
+      }
+    },
+    "%@ · Ends %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · Endet %@"
+          }
+        }
+      }
+    },
+    "%@ · Results hidden until it closes": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · Ergebnisse bis zum Ende verborgen"
+          }
+        }
+      }
+    },
+    "%@'s server cannot find this post.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server von %@ kennt diesen Beitrag nicht."
+          }
+        }
+      }
+    },
+    "%lld days": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Tag"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Tage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld hidden, %lld shown": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ausgeblendet, %lld eingeblendet"
+          }
+        }
+      }
+    },
+    "%lld newer": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld neuere"
+          }
+        }
+      }
+    },
+    "%lld of %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld von %lld"
+          }
+        }
+      }
+    },
+    "1 day": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 Tag"
+          }
+        }
+      }
+    },
+    "1 month": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 Monat"
+          }
+        }
+      }
+    },
+    "1 week": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 Woche"
+          }
+        }
+      }
+    },
+    "2 weeks": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2 Wochen"
+          }
+        }
+      }
+    },
+    "3 months": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3 Monate"
+          }
+        }
+      }
+    },
+    "A position check is a few hundred bytes, so it can run often. Fetching feeds is far more expensive — and a Mastodon timeline moves much faster than an RSS river.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Positionsabfrage umfasst nur wenige hundert Byte und kann daher oft laufen. Feeds abzurufen ist deutlich aufwendiger – und eine Mastodon-Timeline bewegt sich viel schneller als ein RSS-Strom."
+          }
+        }
+      }
+    },
+    "API password": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API-Passwort"
+          }
+        }
+      }
+    },
+    "Accounts": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accounts"
+          }
+        }
+      }
+    },
+    "Activate, then press a key": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktivieren, dann eine Taste drücken"
+          }
+        }
+      }
+    },
+    "Add Account": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account hinzufügen"
+          }
+        }
+      }
+    },
+    "Add FreshRSS": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FreshRSS hinzufügen"
+          }
+        }
+      }
+    },
+    "Add Mastodon": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mastodon hinzufügen"
+          }
+        }
+      }
+    },
+    "Add Rule": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regel hinzufügen"
+          }
+        }
+      }
+    },
+    "Add a FreshRSS server or a Mastodon account to start reading.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Lesen einen FreshRSS-Server oder einen Mastodon-Account hinzufügen."
+          }
+        }
+      }
+    },
+    "Add a rule to hide items whose title or text you would rather not see.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regel hinzufügen, um Einträge auszublenden, deren Titel oder Text unerwünscht ist."
+          }
+        }
+      }
+    },
+    "Add to Read Later": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zu „Später lesen“ hinzufügen"
+          }
+        }
+      }
+    },
+    "All Items": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Einträge"
+          }
+        }
+      }
+    },
+    "Anonymous": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anonym"
+          }
+        }
+      }
+    },
+    "Applied on top of the system text size rather than instead of it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wirkt zusätzlich zur Systemtextgröße, nicht an deren Stelle."
+          }
+        }
+      }
+    },
+    "Applies to": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gilt für"
+          }
+        }
+      }
+    },
+    "Arrived late": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spät eingetroffen"
+          }
+        }
+      }
+    },
+    "Article text": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Artikeltext"
+          }
+        }
+      }
+    },
+    "Attached media": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Angehängte Medien"
+          }
+        }
+      }
+    },
+    "Attachment": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anhang"
+          }
+        }
+      }
+    },
+    "Author": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autor"
+          }
+        }
+      }
+    },
+    "Background refreshes": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisierungen im Hintergrund"
+          }
+        }
+      }
+    },
+    "Badge": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurzinfo"
+          }
+        }
+      }
+    },
+    "Boost": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boosten"
+          }
+        }
+      }
+    },
+    "Bounds what a refresh fetches — a new account pulls a week rather than every article its feeds have ever published. Items already downloaded stay until they are pruned, and widening this re-reads each feed once.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Begrenzt, was eine Aktualisierung abruft – ein neuer Account lädt eine Woche statt sämtlicher je veröffentlichter Artikel. Bereits geladene Einträge bleiben bis zur Bereinigung erhalten; eine Erweiterung liest jeden Feed einmal neu ein."
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbrechen"
+          }
+        }
+      }
+    },
+    "Carries reading positions, Read Later, filters and the account list. Feed passwords and access tokens never leave this device.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Überträgt Lesepositionen, „Später lesen“, Filter und die Accountliste. Feed-Passwörter und Zugriffstokens verlassen dieses Gerät nie."
+          }
+        }
+      }
+    },
+    "Case-sensitive": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groß-/Kleinschreibung beachten"
+          }
+        }
+      }
+    },
+    "Catches up as soon as a window comes back.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Holt auf, sobald wieder ein Fenster erscheint."
+          }
+        }
+      }
+    },
+    "Check the address.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adresse prüfen."
+          }
+        }
+      }
+    },
+    "Checking…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird geprüft …"
+          }
+        }
+      }
+    },
+    "Choose an item from the list.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eintrag aus der Liste auswählen."
+          }
+        }
+      }
+    },
+    "Choose at least one field to look in.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mindestens ein Feld zum Durchsuchen auswählen."
+          }
+        }
+      }
+    },
+    "Clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Löschen"
+          }
+        }
+      }
+    },
+    "Clear %@ shortcut": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurzbefehl für %@ löschen"
+          }
+        }
+      }
+    },
+    "Close": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schließen"
+          }
+        }
+      }
+    },
+    "Close image": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bild schließen"
+          }
+        }
+      }
+    },
+    "Comments": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kommentare"
+          }
+        }
+      }
+    },
+    "Contains": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enthält"
+          }
+        }
+      }
+    },
+    "Continue": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fortfahren"
+          }
+        }
+      }
+    },
+    "Copy Link": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link kopieren"
+          }
+        }
+      }
+    },
+    "Could not do that": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht möglich"
+          }
+        }
+      }
+    },
+    "Could not reach that instance. Check the address and your connection.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Instanz ist nicht erreichbar. Adresse und Verbindung prüfen."
+          }
+        }
+      }
+    },
+    "Could not reach the server.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server ist nicht erreichbar."
+          }
+        }
+      }
+    },
+    "Could not reach the server. Check the address and your connection.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server ist nicht erreichbar. Adresse und Verbindung prüfen."
+          }
+        }
+      }
+    },
+    "Count filtered items in the sidebar": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gefilterte Einträge in der Seitenleiste zählen"
+          }
+        }
+      }
+    },
+    "Count items in": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einträge zählen in"
+          }
+        }
+      }
+    },
+    "Counting…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird gezählt …"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Löschen"
+          }
+        }
+      }
+    },
+    "Dismiss": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausblenden"
+          }
+        }
+      }
+    },
+    "Dismiss All": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle ausblenden"
+          }
+        }
+      }
+    },
+    "Done": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fertig"
+          }
+        }
+      }
+    },
+    "Edit Rule": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regel bearbeiten"
+          }
+        }
+      }
+    },
+    "Edit…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bearbeiten …"
+          }
+        }
+      }
+    },
+    "Enable %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ aktivieren"
+          }
+        }
+      }
+    },
+    "Enabled": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktiviert"
+          }
+        }
+      }
+    },
+    "Enter something to match.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etwas zum Abgleichen eingeben."
+          }
+        }
+      }
+    },
+    "Everything": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles"
+          }
+        }
+      }
+    },
+    "Everywhere": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Überall"
+          }
+        }
+      }
+    },
+    "Explains why an item that has just arrived is sitting far down the list.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erklärt, warum ein gerade eingetroffener Eintrag weit unten in der Liste steht."
+          }
+        }
+      }
+    },
+    "Extra Large": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sehr groß"
+          }
+        }
+      }
+    },
+    "Extra Small": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sehr klein"
+          }
+        }
+      }
+    },
+    "Feed": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feed"
+          }
+        }
+      }
+    },
+    "Feeds": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feeds"
+          }
+        }
+      }
+    },
+    "Fetch items from": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einträge abrufen ab"
+          }
+        }
+      }
+    },
+    "Fetches the replies and the posts above every time you open one.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lädt bei jedem Öffnen die Antworten und die darüberliegenden Beiträge."
+          }
+        }
+      }
+    },
+    "Filtered Items": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gefilterte Einträge"
+          }
+        }
+      }
+    },
+    "Filtered Items normally carries no count, because nothing in it is waiting to be read.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„Gefilterte Einträge“ zeigt normalerweise keine Anzahl, da dort nichts zum Lesen wartet."
+          }
+        }
+      }
+    },
+    "Filters": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter"
+          }
+        }
+      }
+    },
+    "Fit to screen": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An Bildschirm anpassen"
+          }
+        }
+      }
+    },
+    "Forget Token": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token verwerfen"
+          }
+        }
+      }
+    },
+    "FreshRSS…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FreshRSS …"
+          }
+        }
+      }
+    },
+    "Full Page": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ganze Seite"
+          }
+        }
+      }
+    },
+    "General": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allgemein"
+          }
+        }
+      }
+    },
+    "Hidden by “%@”": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausgeblendet durch „%@“"
+          }
+        }
+      }
+    },
+    "Hides ^[%lld cached item](inflect: true).": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Blendet %lld zwischengespeicherten Eintrag aus."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Blendet %lld zwischengespeicherte Einträge aus."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Hides more than %lld cached items.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blendet mehr als %lld zwischengespeicherte Einträge aus."
+          }
+        }
+      }
+    },
+    "Home": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Startseite"
+          }
+        }
+      }
+    },
+    "How far back": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeitraum"
+          }
+        }
+      }
+    },
+    "How often": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Häufigkeit"
+          }
+        }
+      }
+    },
+    "Ignore Rules": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regeln ignorieren"
+          }
+        }
+      }
+    },
+    "Image": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bild"
+          }
+        }
+      }
+    },
+    "In the background": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Im Hintergrund"
+          }
+        }
+      }
+    },
+    "Include items that arrived late": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spät eingetroffene Einträge einbeziehen"
+          }
+        }
+      }
+    },
+    "Instance": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instanz"
+          }
+        }
+      }
+    },
+    "Items appear here once this source has been refreshed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einträge erscheinen hier, sobald diese Quelle aktualisiert wurde."
+          }
+        }
+      }
+    },
+    "Items you mark for later appear here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für später markierte Einträge erscheinen hier."
+          }
+        }
+      }
+    },
+    "Its cached items and saved credentials are deleted, here and on your other devices. Nothing on the FreshRSS or Mastodon server changes.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die zwischengespeicherten Einträge und die gesicherten Zugangsdaten werden gelöscht – hier und auf den anderen Geräten. Auf dem FreshRSS- oder Mastodon-Server ändert sich nichts."
+          }
+        }
+      }
+    },
+    "Keep an offline copy of saved articles": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offline-Kopie gesicherter Artikel behalten"
+          }
+        }
+      }
+    },
+    "Keyboard Shortcuts": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tastaturkurzbefehle"
+          }
+        }
+      }
+    },
+    "Large": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groß"
+          }
+        }
+      }
+    },
+    "Last Refresh": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letzte Aktualisierung"
+          }
+        }
+      }
+    },
+    "Last background refresh": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letzte Aktualisierung im Hintergrund"
+          }
+        }
+      }
+    },
+    "Like": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favorisieren"
+          }
+        }
+      }
+    },
+    "Line height": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeilenhöhe"
+          }
+        }
+      }
+    },
+    "Link: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link: %@"
+          }
+        }
+      }
+    },
+    "Link: %@, on %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link: %@, auf %@"
+          }
+        }
+      }
+    },
+    "List headings": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listenüberschriften"
+          }
+        }
+      }
+    },
+    "List text": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listentext"
+          }
+        }
+      }
+    },
+    "Load Comments": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kommentare laden"
+          }
+        }
+      }
+    },
+    "Load Full Page Content": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ganze Seite laden"
+          }
+        }
+      }
+    },
+    "Load the discussion from each of this feed's articles and show it underneath.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Diskussion zu jedem Artikel dieses Feeds laden und darunter anzeigen."
+          }
+        }
+      }
+    },
+    "Load the whole conversation": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gesamte Unterhaltung laden"
+          }
+        }
+      }
+    },
+    "Load this feed's articles from their own pages instead of the feed summary.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Artikel dieses Feeds von ihren eigenen Seiten laden statt aus der Feed-Zusammenfassung."
+          }
+        }
+      }
+    },
+    "Loading comments…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kommentare werden geladen …"
+          }
+        }
+      }
+    },
+    "Loading conversation…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unterhaltung wird geladen …"
+          }
+        }
+      }
+    },
+    "Loading the full article": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vollständiger Artikel wird geladen"
+          }
+        }
+      }
+    },
+    "Loading the full article…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vollständiger Artikel wird geladen …"
+          }
+        }
+      }
+    },
+    "Look in": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suchen in"
+          }
+        }
+      }
+    },
+    "Mark items that arrived late": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spät eingetroffene Einträge markieren"
+          }
+        }
+      }
+    },
+    "Mastodon": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mastodon"
+          }
+        }
+      }
+    },
+    "Mastodon…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mastodon …"
+          }
+        }
+      }
+    },
+    "Match": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übereinstimmung"
+          }
+        }
+      }
+    },
+    "Name": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        }
+      }
+    },
+    "Never": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie"
+          }
+        }
+      }
+    },
+    "New Rule": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neue Regel"
+          }
+        }
+      }
+    },
+    "Next Item": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nächster Eintrag"
+          }
+        }
+      }
+    },
+    "No Accounts": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Accounts"
+          }
+        }
+      }
+    },
+    "No Item Selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Eintrag ausgewählt"
+          }
+        }
+      }
+    },
+    "No Items": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Einträge"
+          }
+        }
+      }
+    },
+    "No Rules": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Regeln"
+          }
+        }
+      }
+    },
+    "No cached item matches any of your rules.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein zwischengespeicherter Eintrag trifft auf eine der Regeln zu."
+          }
+        }
+      }
+    },
+    "No comments.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Kommentare."
+          }
+        }
+      }
+    },
+    "No longer matched — waiting to reappear": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trifft nicht mehr zu – erscheint wieder"
+          }
+        }
+      }
+    },
+    "No replies.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Antworten."
+          }
+        }
+      }
+    },
+    "No shortcut": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Kurzbefehl"
+          }
+        }
+      }
+    },
+    "No token saved yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch kein Token gesichert."
+          }
+        }
+      }
+    },
+    "None": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keiner"
+          }
+        }
+      }
+    },
+    "Not signed in on this device": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf diesem Gerät nicht angemeldet"
+          }
+        }
+      }
+    },
+    "Not yet": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch nicht"
+          }
+        }
+      }
+    },
+    "Nothing Hidden": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nichts ausgeblendet"
+          }
+        }
+      }
+    },
+    "Nothing Saved": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nichts gesichert"
+          }
+        }
+      }
+    },
+    "Nothing is scheduled, because every cadence above is switched off.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es ist nichts geplant, weil oben jedes Intervall ausgeschaltet ist."
+          }
+        }
+      }
+    },
+    "Nothing waiting": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nichts wartet"
+          }
+        }
+      }
+    },
+    "OK": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "Off by default: a late arrival sits below your position, so counting it would advertise something you cannot find by scrolling to the top.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standardmäßig aus: Ein spät eingetroffener Eintrag liegt unterhalb der Leseposition – ihn mitzuzählen würde also etwas ankündigen, das sich durch Scrollen nach oben nicht finden lässt."
+          }
+        }
+      }
+    },
+    "Off by default: loading a conversation is an extra request to your instance for every post you open. With it off, a post that has one offers a button instead.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standardmäßig aus: Das Laden einer Unterhaltung bedeutet eine zusätzliche Anfrage an die Instanz – für jeden geöffneten Beitrag. Ist die Option aus, bietet ein Beitrag mit Unterhaltung stattdessen eine Taste an."
+          }
+        }
+      }
+    },
+    "Older Items": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ältere Einträge"
+          }
+        }
+      }
+    },
+    "Only Mastodon posts can be liked or boosted.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur Mastodon-Beiträge können favorisiert oder geboostet werden."
+          }
+        }
+      }
+    },
+    "Only the saved summary is left: this item was put aside without an offline copy, and it is no longer in the cache.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es ist nur die gespeicherte Zusammenfassung übrig: Dieser Eintrag wurde ohne Offline-Kopie zurückgelegt und liegt nicht mehr im Zwischenspeicher."
+          }
+        }
+      }
+    },
+    "Open Website": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Website öffnen"
+          }
+        }
+      }
+    },
+    "Open in Browser": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Im Browser öffnen"
+          }
+        }
+      }
+    },
+    "Open links in the app": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Links in der App öffnen"
+          }
+        }
+      }
+    },
+    "Open post from %@ in browser": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beitrag von %@ im Browser öffnen"
+          }
+        }
+      }
+    },
+    "Opens a tapped link in Safari inside ReadRead, so you keep your place in the timeline.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öffnet einen angetippten Link in Safari innerhalb von ReadRead – die Position in der Timeline bleibt erhalten."
+          }
+        }
+      }
+    },
+    "Opens the selected item's link in your browser.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öffnet den Link des ausgewählten Eintrags im Browser."
+          }
+        }
+      }
+    },
+    "Optional": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional"
+          }
+        }
+      }
+    },
+    "Paste the token": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token einsetzen"
+          }
+        }
+      }
+    },
+    "Pattern": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muster"
+          }
+        }
+      }
+    },
+    "Pause while no window is visible": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausieren, solange kein Fenster sichtbar ist"
+          }
+        }
+      }
+    },
+    "Plays this media": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielt dieses Medium ab"
+          }
+        }
+      }
+    },
+    "Poll": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umfrage"
+          }
+        }
+      }
+    },
+    "Position Sync": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Positionsabgleich"
+          }
+        }
+      }
+    },
+    "Press a key…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taste drücken …"
+          }
+        }
+      }
+    },
+    "Press the key to assign": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taste zum Zuweisen drücken"
+          }
+        }
+      }
+    },
+    "Previous Item": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorheriger Eintrag"
+          }
+        }
+      }
+    },
+    "Reachable · %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erreichbar · %@ %@"
+          }
+        }
+      }
+    },
+    "Read Later": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Später lesen"
+          }
+        }
+      }
+    },
+    "ReadRead never writes to FreshRSS. Read state on the server is left exactly as it is.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ReadRead schreibt nie nach FreshRSS. Der Gelesen-Status auf dem Server bleibt unverändert."
+          }
+        }
+      }
+    },
+    "ReadRead reads your home timeline and your account, and can favourite and boost. Mastodon grants boosting and posting together, so the permission is wider than the app: ReadRead never posts, follows or blocks.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ReadRead liest die eigene Startseite und das eigene Konto und kann favorisieren und boosten. Mastodon erteilt Boosten und Veröffentlichen gemeinsam, die Berechtigung ist also weiter als die App: ReadRead veröffentlicht nichts, folgt niemandem und blockiert niemanden."
+          }
+        }
+      }
+    },
+    "Reading": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesen"
+          }
+        }
+      }
+    },
+    "Reading position": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leseposition"
+          }
+        }
+      }
+    },
+    "Refresh": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisieren"
+          }
+        }
+      }
+    },
+    "Refreshing": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisierung"
+          }
+        }
+      }
+    },
+    "Refreshing is paused because no window is visible. It catches up as soon as one is.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Aktualisierung ist angehalten, weil kein Fenster sichtbar ist. Sie wird nachgeholt, sobald wieder eines sichtbar ist."
+          }
+        }
+      }
+    },
+    "Regular expression": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regulärer Ausdruck"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfernen"
+          }
+        }
+      }
+    },
+    "Remove Boost": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boost entfernen"
+          }
+        }
+      }
+    },
+    "Remove from Read Later": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus „Später lesen“ entfernen"
+          }
+        }
+      }
+    },
+    "Remove this shortcut": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diesen Kurzbefehl entfernen"
+          }
+        }
+      }
+    },
+    "Remove…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfernen …"
+          }
+        }
+      }
+    },
+    "Results hidden until the poll ends": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ergebnisse bis zum Ende der Umfrage verborgen"
+          }
+        }
+      }
+    },
+    "Rules only hide. An item is hidden if any enabled rule matches it, and hidden items are left out of every count — they are listed under Filtered Items in the sidebar.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regeln blenden nur aus. Ein Eintrag wird ausgeblendet, sobald eine aktive Regel zutrifft, und ausgeblendete Einträge werden nirgends mitgezählt – sie stehen in der Seitenleiste unter „Gefilterte Einträge“."
+          }
+        }
+      }
+    },
+    "Running now": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Läuft gerade"
+          }
+        }
+      }
+    },
+    "Save": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sichern"
+          }
+        }
+      }
+    },
+    "Save and Test": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sichern und testen"
+          }
+        }
+      }
+    },
+    "Saved for offline reading": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für das Offline-Lesen gesichert"
+          }
+        }
+      }
+    },
+    "Saved items stay readable after the feed drops them or the page disappears.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gesicherte Einträge bleiben lesbar, auch wenn der Feed sie entfernt oder die Seite verschwindet."
+          }
+        }
+      }
+    },
+    "Saves the selected item, or removes it if it is already saved.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sichert den ausgewählten Eintrag – oder entfernt ihn, falls er bereits gesichert ist."
+          }
+        }
+      }
+    },
+    "Scroll Selection to Top": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auswahl nach oben scrollen"
+          }
+        }
+      }
+    },
+    "Scroll to Timeline Position": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zur Leseposition scrollen"
+          }
+        }
+      }
+    },
+    "Scroll to Top": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach oben scrollen"
+          }
+        }
+      }
+    },
+    "Sensitive media": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sensible Medien"
+          }
+        }
+      }
+    },
+    "Server": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server"
+          }
+        }
+      }
+    },
+    "Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einstellungen"
+          }
+        }
+      }
+    },
+    "Share": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Teilen"
+          }
+        }
+      }
+    },
+    "Shortcuts act on the selected item. They are unmodified single keys by default, which is why the app has no text fields in the timeline for them to interfere with — hold Command, Option or Control while recording to add a modifier.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurzbefehle wirken auf den ausgewählten Eintrag. Standardmäßig sind es einzelne Tasten ohne Zusatztaste – deshalb hat die App in der Timeline keine Textfelder, mit denen sie kollidieren könnten. Beim Aufzeichnen die Befehls-, Wahl- oder Steuerungstaste gedrückt halten, um eine Zusatztaste hinzuzufügen."
+          }
+        }
+      }
+    },
+    "Show Conversation": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unterhaltung anzeigen"
+          }
+        }
+      }
+    },
+    "Show Media": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medien anzeigen"
+          }
+        }
+      }
+    },
+    "Show Post": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beitrag anzeigen"
+          }
+        }
+      }
+    },
+    "Show media": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medien anzeigen"
+          }
+        }
+      }
+    },
+    "Show this image full size": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Bild in voller Größe anzeigen"
+          }
+        }
+      }
+    },
+    "Shows the image full size": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeigt das Bild in voller Größe"
+          }
+        }
+      }
+    },
+    "Sign In": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anmelden"
+          }
+        }
+      }
+    },
+    "Signed in as %@, but this account is %@. Nothing was changed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Angemeldet als %1$@, dieses Konto ist aber %2$@. Es wurde nichts geändert."
+          }
+        }
+      }
+    },
+    "Slow down in Low Power Mode": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Im Stromsparmodus verlangsamen"
+          }
+        }
+      }
+    },
+    "Small": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klein"
+          }
+        }
+      }
+    },
+    "Source name": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quellenname"
+          }
+        }
+      }
+    },
+    "Standard": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard"
+          }
+        }
+      }
+    },
+    "Sync reading position": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leseposition synchronisieren"
+          }
+        }
+      }
+    },
+    "Text": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Text"
+          }
+        }
+      }
+    },
+    "Text Size": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Textgröße"
+          }
+        }
+      }
+    },
+    "Text to look for": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zu suchender Text"
+          }
+        }
+      }
+    },
+    "That address answered, but has no FreshRSS API at it. Give the address of the FreshRSS site itself, without any path.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Adresse hat geantwortet, dort liegt aber keine FreshRSS-API. Die Adresse der FreshRSS-Website selbst angeben, ohne Pfad."
+          }
+        }
+      }
+    },
+    "That address answered, but not like FreshRSS. Check it points at the site root.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Adresse hat geantwortet, aber nicht wie FreshRSS. Prüfen, ob sie auf das Stammverzeichnis der Website zeigt."
+          }
+        }
+      }
+    },
+    "That address answered, but not like a Mastodon instance.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Adresse hat geantwortet, aber nicht wie eine Mastodon-Instanz."
+          }
+        }
+      }
+    },
+    "That address could not be used. Check it for typos.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Adresse konnte nicht verwendet werden. Auf Tippfehler prüfen."
+          }
+        }
+      }
+    },
+    "That did not work. The server may be unreachable.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das hat nicht funktioniert. Der Server ist möglicherweise nicht erreichbar."
+          }
+        }
+      }
+    },
+    "That does not look like an instance address.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das sieht nicht nach einer Instanzadresse aus."
+          }
+        }
+      }
+    },
+    "That link is not a web page, so it has no comments.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Link führt nicht zu einer Webseite und hat daher keine Kommentare."
+          }
+        }
+      }
+    },
+    "That link is not a web page.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Link führt nicht zu einer Webseite."
+          }
+        }
+      }
+    },
+    "That page is too large to read here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Seite ist zu groß, um sie hier zu lesen."
+          }
+        }
+      }
+    },
+    "That page needs a subscription or a login.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Seite erfordert ein Abonnement oder eine Anmeldung."
+          }
+        }
+      }
+    },
+    "That page's text could not be read.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Text dieser Seite konnte nicht gelesen werden."
+          }
+        }
+      }
+    },
+    "The access token could not be saved to the Keychain.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Zugriffstoken konnte nicht im Schlüsselbund gesichert werden."
+          }
+        }
+      }
+    },
+    "The account this post came from is no longer set up.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Account, aus dem dieser Beitrag stammt, ist nicht mehr eingerichtet."
+          }
+        }
+      }
+    },
+    "The app's own cadences are paused because no window is visible. macOS keeps refreshing in the background, and the cadences catch up as soon as a window is back.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die eigenen Intervalle der App sind angehalten, weil kein Fenster sichtbar ist. macOS aktualisiert im Hintergrund weiter, und die Intervalle werden nachgeholt, sobald wieder ein Fenster sichtbar ist."
+          }
+        }
+      }
+    },
+    "The authorisation did not complete. Start again, and finish in the window that opens.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Autorisierung wurde nicht abgeschlossen. Erneut starten und im sich öffnenden Fenster abschließen."
+          }
+        }
+      }
+    },
+    "The comments could not be loaded.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Kommentare konnten nicht geladen werden."
+          }
+        }
+      }
+    },
+    "The conversation could not be loaded.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Unterhaltung konnte nicht geladen werden."
+          }
+        }
+      }
+    },
+    "The instance rejected the new token straight away. Try signing in again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Instanz hat das neue Token sofort abgelehnt. Erneut anmelden."
+          }
+        }
+      }
+    },
+    "The page could not be loaded.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Seite konnte nicht geladen werden."
+          }
+        }
+      }
+    },
+    "The password could not be saved to the Keychain.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Passwort konnte nicht im Schlüsselbund gesichert werden."
+          }
+        }
+      }
+    },
+    "The server answered with an error (%lld). Check the address points at FreshRSS.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat mit einem Fehler geantwortet (%lld). Prüfen, ob die Adresse auf FreshRSS zeigt."
+          }
+        }
+      }
+    },
+    "The server answered, but reports it is not healthy.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat geantwortet, meldet aber einen fehlerhaften Zustand."
+          }
+        }
+      }
+    },
+    "The server rejected that token.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat dieses Token abgelehnt."
+          }
+        }
+      }
+    },
+    "The server rejected that username or API password. The API password is set separately, in FreshRSS's own profile settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat diesen Benutzernamen oder das API-Passwort abgelehnt. Das API-Passwort wird separat in den FreshRSS-Profileinstellungen festgelegt."
+          }
+        }
+      }
+    },
+    "The server responded with something unexpected. Check the address points at FreshRSS.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat unerwartet geantwortet. Prüfen, ob die Adresse auf FreshRSS zeigt."
+          }
+        }
+      }
+    },
+    "The site answered with an error (%lld).": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Website hat mit einem Fehler geantwortet (%lld)."
+          }
+        }
+      }
+    },
+    "The times above are the app's own cadences, which run while a window is visible; a failing server is retried at a widening interval rather than every cycle. Behind a hidden window macOS itself schedules the refreshing, at a moment of its choosing near the shortest cadence above — that is what the count below reports. Nothing can wake ReadRead once it has quit: macOS has no equivalent of the background launch iOS gives a closed app.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Zeiten oben sind die eigenen Intervalle der App; sie laufen, solange ein Fenster sichtbar ist. Ein Server mit Fehlern wird in wachsenden Abständen erneut versucht statt in jedem Zyklus. Hinter einem verdeckten Fenster plant macOS die Aktualisierung selbst, zu einem Zeitpunkt seiner Wahl nahe dem kürzesten Intervall oben – darüber berichtet die Zählung unten. Eine beendete App lässt sich nicht mehr aufwecken: macOS kennt keine Entsprechung zum Hintergrundstart, den iOS einer geschlossenen App gibt."
+          }
+        }
+      }
+    },
+    "The token could not be saved: %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Token konnte nicht gesichert werden: %@."
+          }
+        }
+      }
+    },
+    "This image could not be loaded.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Bild konnte nicht geladen werden."
+          }
+        }
+      }
+    },
+    "This is the separate **API password** from FreshRSS's Profile settings, not your login password.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dies ist das separate **API-Passwort** aus den FreshRSS-Profileinstellungen, nicht das Anmeldepasswort."
+          }
+        }
+      }
+    },
+    "This page has no article to extract, so the feed's own content is shown.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf dieser Seite gibt es keinen extrahierbaren Artikel – daher wird der Inhalt des Feeds angezeigt."
+          }
+        }
+      }
+    },
+    "This post did not come from a Mastodon account.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Beitrag stammt nicht aus einem Mastodon-Account."
+          }
+        }
+      }
+    },
+    "This post has no conversation to load.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zu diesem Beitrag gibt es keine Unterhaltung."
+          }
+        }
+      }
+    },
+    "This site does not publish its comments.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Website veröffentlicht ihre Kommentare nicht."
+          }
+        }
+      }
+    },
+    "This site does not share its comments.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Website gibt ihre Kommentare nicht heraus."
+          }
+        }
+      }
+    },
+    "Title": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Titel"
+          }
+        }
+      }
+    },
+    "Token": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token"
+          }
+        }
+      }
+    },
+    "Try Again": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut versuchen"
+          }
+        }
+      }
+    },
+    "Unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbekannt"
+          }
+        }
+      }
+    },
+    "Unlike": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht mehr favorisieren"
+          }
+        }
+      }
+    },
+    "Up to date": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktuell"
+          }
+        }
+      }
+    },
+    "Username": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Benutzername"
+          }
+        }
+      }
+    },
+    "When": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeitpunkt"
+          }
+        }
+      }
+    },
+    "Where": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bereich"
+          }
+        }
+      }
+    },
+    "Whole word": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ganzes Wort"
+          }
+        }
+      }
+    },
+    "Your server's address. You can type it as `mastodon.social`, `@you@mastodon.social`, or a full URL.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Adresse des Servers – eingebbar als `mastodon.social`, `@name@mastodon.social` oder als vollständige URL."
+          }
+        }
+      }
+    },
+    "Zoomed %@×": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vergrößert %@×"
+          }
+        }
+      }
+    },
+    "^[%lld Comment](inflect: true)": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Kommentar"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Kommentare"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "^[%lld boost](inflect: true)": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Boost"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Boosts"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "^[%lld boost](inflect: true), including yours": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Boost, darunter der eigene"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Boosts, darunter der eigene"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "^[%lld failure](inflect: true) in a row": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Fehlversuch in Folge"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Fehlversuche in Folge"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "^[%lld favourite](inflect: true)": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Favorit"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Favoriten"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "^[%lld favourite](inflect: true), including yours": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Favorit, darunter der eigene"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Favoriten, darunter der eigene"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "^[%lld item](inflect: true)": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Eintrag"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Einträge"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "^[%lld item](inflect: true) arrived": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Eintrag eingetroffen"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Einträge eingetroffen"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "^[%lld reply](inflect: true)": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Antwort"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Antworten"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "^[%lld sensitive attachment](inflect: true)": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld sensibler Anhang"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld sensible Anhänge"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "^[%lld vote](inflect: true)": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Stimme"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Stimmen"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "author": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autor"
+          }
+        }
+      }
+    },
+    "boosted": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "geboostet"
+          }
+        }
+      }
+    },
+    "iOS decides when a closed app may refresh, and it can be a long wait. Swiping ReadRead away in the app switcher stops it being asked at all. The times above are the app's own cadences, which run while it is open.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS entscheidet, wann eine geschlossene App aktualisieren darf, und das kann lange dauern. Wird ReadRead in der App-Übersicht weggewischt, wird es gar nicht mehr gefragt. Die Zeiten oben gehören zu den eigenen Intervallen der App, die bei geöffneter App laufen."
+          }
+        }
+      }
+    },
+    "iOS turned down the last request. Background App Refresh may be switched off for ReadRead in Settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS hat die letzte Anfrage abgelehnt. Möglicherweise ist „Hintergrundaktualisierung“ für ReadRead in den Einstellungen deaktiviert."
+          }
+        }
+      }
+    },
+    "in %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "in %@"
+          }
+        }
+      }
+    },
+    "nothing": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nichts"
+          }
+        }
+      }
+    },
+    "source": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quelle"
+          }
+        }
+      }
+    },
+    "text": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Text"
+          }
+        }
+      }
+    },
+    "title": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Titel"
+          }
+        }
+      }
+    },
+    "· case-sensitive": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "· Groß-/Kleinschreibung beachten"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

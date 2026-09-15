@@ -1,0 +1,31 @@
+{
+	"subscriptions": [
+		{
+			"id": "feed/16",
+			"title": "heise online News",
+			"categories": [{ "id": "user/-/label/RSS", "label": "RSS" }],
+			"url": "https://www.heise.de/rss/heise.rdf",
+			"htmlUrl": "https://www.heise.de/",
+			"iconUrl": "https://rss.example.net/f.php?h=988fceaa",
+			"frss:priority": "main"
+		},
+		{
+			"id": "feed/24",
+			"title": "[RSS／Feed] nixCraft: Linux Tips， Hacks， Tutorials， And Ideas In Blog Format",
+			"categories": [{ "id": "user/-/label/RSS", "label": "RSS" }],
+			"url": "https://www.cyberciti.com/atom/atom.xml",
+			"htmlUrl": "https://www.cyberciti.biz/atom/",
+			"iconUrl": "https://rss.example.net/f.php?h=0e55a9b6",
+			"frss:priority": "main"
+		},
+		{
+			"id": "feed/104",
+			"title": "Themen - Neuigkeiten und Hinweise - WoltLab®",
+			"categories": [{ "id": "user/-/label/Updates", "label": "Updates" }],
+			"url": "https://www.woltlab.com/community/thread-list-rss-feed/8/?at=1337243-cb92c0f1",
+			"htmlUrl": "https://www.woltlab.com/",
+			"iconUrl": "https://rss.example.net/f.php?h=a0063e1c",
+			"frss:priority": "main"
+		}
+	]
+}

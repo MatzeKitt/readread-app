@@ -1,0 +1,105 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+namespace KittMedia\ReadReadSync;
+
+if (PHP_SAPI !== 'cli') {
+    // Reachable over HTTP this would hand out tokens to anyone, so refuse outright rather than
+    // relying only on the .htaccess rules.
+    http_response_code(404);
+    exit(1);
+}
+
+require __DIR__ . '/../src/bootstrap.php';
+
+$command = $argv[1] ?? 'help';
+$database = database();
+$database->migrate();
+
+$tokens = new TokenStore($database);
+$records = new RecordStore($database);
+
+/** Reads a named option, e.g. --label="iPhone". */
+$option = static function (string $name, string $default = '') use ($argv): string {
+    foreach (\array_slice($argv, 2) as $argument) {
+        if (str_starts_with($argument, "--{$name}=")) {
+            return substr($argument, strlen($name) + 3);
+        }
+    }
+    return $default;
+};
+
+switch ($command) {
+    case 'migrate':
+        echo "Schema applied to ", databasePath(), "\n";
+        break;
+
+    case 'token:create':
+        $label = $option('label', gethostname() ?: 'device');
+        $token = $tokens->create($label);
+        echo "Token created for \"{$label}\".\n\n";
+        echo "  {$token}\n\n";
+        // Only chance to see it: the server stores a SHA-256 hash and cannot recover the original.
+        echo "This is shown once and cannot be retrieved again. Paste it into ReadRead now.\n";
+        break;
+
+    case 'token:list':
+        $all = $tokens->all();
+        if ($all === []) {
+            echo "No tokens. Create one with: readread-sync token:create --label=\"My Mac\"\n";
+            break;
+        }
+        printf("%-12s  %-24s  %-20s  %s\n", 'FINGERPRINT', 'LABEL', 'CREATED', 'LAST USED');
+        foreach ($all as $row) {
+            printf(
+                "%-12s  %-24s  %-20s  %s\n",
+                substr($row['token_hash'], 0, 12),
+                $row['label'],
+                date('Y-m-d H:i', intdiv($row['created_at'], 1000)),
+                $row['last_used_at'] === null ? 'never' : date('Y-m-d H:i', intdiv($row['last_used_at'], 1000))
+            );
+        }
+        break;
+
+    case 'token:revoke':
+        $fingerprint = $option('fingerprint');
+        if (strlen($fingerprint) < 8) {
+            fwrite(STDERR, "Pass --fingerprint=<at least 8 characters from token:list>\n");
+            exit(1);
+        }
+        $removed = $tokens->revokeByHashPrefix($fingerprint);
+        echo $removed === 0 ? "No token matched.\n" : "Revoked {$removed} token(s).\n";
+        break;
+
+    case 'prune':
+        $days = (int) ($option('days', '90'));
+        $removed = $records->pruneTombstones($days);
+        echo "Removed {$removed} tombstone(s) older than {$days} days.\n";
+        break;
+
+    case 'status':
+        echo 'Database:  ', databasePath(), "\n";
+        echo 'Revision:  ', $records->currentRevision(), "\n";
+        echo 'Tokens:    ', \count($tokens->all()), "\n";
+        break;
+
+    default:
+        echo <<<TEXT
+        readread-sync — the ReadRead sync service
+
+        Usage:
+          readread-sync migrate                              Apply the schema
+          readread-sync token:create [--label="My Mac"]       Mint a token (shown once)
+          readread-sync token:list                            List tokens by fingerprint
+          readread-sync token:revoke --fingerprint=abc123de   Revoke one token
+          readread-sync prune [--days=90]                     Drop old tombstones
+          readread-sync status                                Show revision and token counts
+
+        The database location comes from READREAD_SYNC_DB — set in server/.env, or in the
+        environment to override it for one command — defaulting to server/data/sync.sqlite.
+
+        TEXT;
+        break;
+}

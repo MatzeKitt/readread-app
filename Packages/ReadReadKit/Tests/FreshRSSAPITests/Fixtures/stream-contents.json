@@ -1,0 +1,55 @@
+{
+	"id": "user/-/state/com.google/reading-list",
+	"updated": 1757000000,
+	"items": [
+		{
+			"id": "tag:google.com,2005:reader/item/0005fd1e3a2b4c10",
+			"crawlTimeMsec": "1756999000000",
+			"timestampUsec": "1756999000000000",
+			"published": 1756998000,
+			"title": "On the new design language",
+			"canonical": [ { "href": "https://daringfireball.net/2026/09/design" } ],
+			"alternate": [ { "href": "https://daringfireball.net/2026/09/design" } ],
+			"categories": [
+				"user/-/state/com.google/reading-list",
+				"user/-/label/Apple"
+			],
+			"origin": {
+				"streamId": "feed/1",
+				"htmlUrl": "https://daringfireball.net/",
+				"title": "Daring Fireball"
+			},
+			"summary": {
+				"content": "<p>The most interesting thing is what it implies about <em>hierarchy</em>.</p>"
+			},
+			"author": "John Gruber"
+		},
+		{
+			"id": "tag:google.com,2005:reader/item/0005fd1e2f1a0b09",
+			"crawlTimeMsec": "1756998500000",
+			"timestampUsec": "1756998500000000",
+			"published": 1756990000,
+			"title": "A post with an enclosure and no author",
+			"canonical": [ { "href": "https://sixcolors.com/post/2026/09/thing/" } ],
+			"categories": [ "user/-/state/com.google/reading-list" ],
+			"origin": { "streamId": "feed/2", "title": "Six Colors" },
+			"summary": { "content": "<p>Body.</p>" },
+			"enclosure": [
+				{ "href": "https://sixcolors.com/a.mp3", "type": "audio/mpeg", "length": 12345678 },
+				{ "href": "https://sixcolors.com/b.png", "type": "image/png" }
+			]
+		},
+		{
+			"id": "tag:google.com,2005:reader/item/0005fd1e10000001",
+			"crawlTimeMsec": "1756998000000",
+			"timestampUsec": "1756998000000000",
+			"published": 1600000000,
+			"title": "Back-dated archive post",
+			"canonical": [ { "href": "https://example.org/2020/old" } ],
+			"categories": [ "user/-/state/com.google/reading-list", "user/-/state/com.google/read" ],
+			"origin": { "streamId": "feed/9", "title": "Slash / in the folder" },
+			"summary": { "content": "<p>Old but newly indexed.</p>" }
+		}
+	],
+	"continuation": "1685459810234342"
+}

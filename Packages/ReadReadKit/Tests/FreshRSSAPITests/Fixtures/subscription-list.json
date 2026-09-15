@@ -1,0 +1,46 @@
+{
+	"subscriptions": [
+		{
+			"id": "feed/1",
+			"title": "Daring Fireball",
+			"categories": [
+				{ "id": "user/-/label/Apple", "label": "Apple" }
+			],
+			"url": "https://daringfireball.net/feeds/main",
+			"htmlUrl": "https://daringfireball.net/",
+			"iconUrl": "https://rss.example.net/f.php?id=1",
+			"frss:priority": "main"
+		},
+		{
+			"id": "feed/2",
+			"title": "Six Colors",
+			"categories": [
+				{ "id": "user/-/label/Apple", "label": "Apple" }
+			],
+			"url": "https://sixcolors.com/feed/",
+			"htmlUrl": "https://sixcolors.com/",
+			"iconUrl": "",
+			"frss:priority": "main"
+		},
+		{
+			"id": "feed/7",
+			"title": "Uncategorised feed",
+			"categories": [],
+			"url": "https://example.com/feed",
+			"htmlUrl": "",
+			"iconUrl": "",
+			"frss:priority": "main"
+		},
+		{
+			"id": "feed/9",
+			"title": "Slash / in the folder",
+			"categories": [
+				{ "id": "user/-/label/News / Long Reads", "label": "News / Long Reads" }
+			],
+			"url": "https://example.org/feed",
+			"htmlUrl": "https://example.org/",
+			"iconUrl": "https://rss.example.net/f.php?id=9",
+			"frss:priority": 0
+		}
+	]
+}
