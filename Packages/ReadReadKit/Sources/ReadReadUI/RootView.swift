@@ -44,6 +44,11 @@ public struct RootView: View {
     /// switching between the timeline and Read Later does not restart it, and so both columns
     /// measure against the same instant. See `RelativeClock`.
     @State private var relativeClock = RelativeClock()
+
+    /// The reply composer and the mute confirmation, for the same reason as the two above: both are
+    /// started from a timeline row's context menu, and a row is recycled the instant it scrolls off.
+    /// See `StatusComposer`.
+    @State private var composer = StatusComposer()
     /// Optional because `List(selection:)` requires an optional binding — the non-optional
     /// form resolves to a macOS-only initialiser. Seeded to `.all` so the app opens on the
     /// unified timeline rather than an empty pane.
@@ -123,8 +128,34 @@ public struct RootView: View {
             // client error can carry the request whose header holds the access token.
             Text(services.lastActionFailure ?? "")
         }
+        // A sheet rather than a window, on both platforms: a reply is a short, modal errand with a
+        // Cancel, and it is written about a post that is on screen behind it.
+        .sheet(item: $composer.replyDraft) { draft in
+            ReplyComposerSheet(draft: draft)
+        }
+        // Confirmed, unlike Like and Boost, because this one cannot be taken back from inside the
+        // app: the posts already fetched are deleted, and unmuting on the instance will not bring
+        // them back — the ingest walk stops at the first id it already knows. See `AuthorMute`.
+        .confirmationDialog(
+            muteTitle,
+            isPresented: Binding(
+                get: { composer.muteRequest != nil },
+                set: { if !$0 { composer.dismissMute() } }
+            ),
+            titleVisibility: .visible,
+            presenting: composer.muteRequest
+        ) { request in
+            Button("Mute", role: .destructive) {
+                composer.dismissMute()
+                Task { await services.muteAuthor(of: request.item) }
+            }
+            Button("Cancel", role: .cancel) { composer.dismissMute() }
+        } message: { _ in
+            Text("Their posts stop arriving, and the ones already here are removed. Unmuting is done on your Mastodon server.")
+        }
         .environment(mediaViewer)
         .environment(relativeClock)
+        .environment(composer)
         // Started here because the clock lives here. It runs for as long as the shell does, which
         // on the Mac is the whole session.
         .task { await relativeClock.run() }
@@ -212,6 +243,13 @@ public struct RootView: View {
         .onChange(of: selectedScope) {
             selectedItemID = nil
         }
+    }
+
+    /// Names the person in the question rather than in the body, so the dialog's own title is the
+    /// decision being taken. An empty string when nothing is pending, which is never on screen.
+    private var muteTitle: String {
+        guard let request = composer.muteRequest else { return "" }
+        return String(localized: "Mute @\(request.authorHandle)?")
     }
 }
 

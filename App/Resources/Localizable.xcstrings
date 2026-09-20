@@ -244,6 +244,17 @@
         }
       }
     },
+    "A reply cannot be seen by more people than the post it answers.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Antwort kann nicht mehr Personen erreichen als der Beitrag, auf den sie antwortet."
+          }
+        }
+      }
+    },
     "API password": {
       "extractionState": "manual",
       "localizations": {
@@ -284,6 +295,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Account hinzufügen"
+          }
+        }
+      }
+    },
+    "Add Content Warning": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inhaltswarnung hinzufügen"
           }
         }
       }
@@ -651,6 +673,17 @@
         }
       }
     },
+    "Content warning": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inhaltswarnung"
+          }
+        }
+      }
+    },
     "Continue": {
       "extractionState": "manual",
       "localizations": {
@@ -992,6 +1025,17 @@
         }
       }
     },
+    "Followers only": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur Follower"
+          }
+        }
+      }
+    },
     "Forget Token": {
       "extractionState": "manual",
       "localizations": {
@@ -1132,6 +1176,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bild"
+          }
+        }
+      }
+    },
+    "In reply to": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antwort auf"
           }
         }
       }
@@ -1473,6 +1528,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "Übereinstimmung"
+          }
+        }
+      }
+    },
+    "Mentioned people only": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur erwähnte Personen"
+          }
+        }
+      }
+    },
+    "Mute": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stummschalten"
+          }
+        }
+      }
+    },
+    "Mute %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ stummschalten"
+          }
+        }
+      }
+    },
+    "Mute @%@?": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "@%@ stummschalten?"
           }
         }
       }
@@ -1939,6 +2038,28 @@
         }
       }
     },
+    "Public": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öffentlich"
+          }
+        }
+      }
+    },
+    "Quiet public": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht gelistet"
+          }
+        }
+      }
+    },
     "Reachable · %@ %@": {
       "extractionState": "manual",
       "localizations": {
@@ -2071,6 +2192,17 @@
         }
       }
     },
+    "Remove Content Warning": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inhaltswarnung entfernen"
+          }
+        }
+      }
+    },
     "Remove from Read Later": {
       "extractionState": "manual",
       "localizations": {
@@ -2100,6 +2232,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Entfernen …"
+          }
+        }
+      }
+    },
+    "Reply": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antworten"
+          }
+        }
+      }
+    },
+    "Reply as": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antworten als"
+          }
+        }
+      }
+    },
+    "Reply…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antworten …"
           }
         }
       }
@@ -2687,6 +2852,17 @@
         }
       }
     },
+    "The reply is posted by this account, on its own server.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Antwort wird von diesem Konto auf dessen eigenem Server veröffentlicht."
+          }
+        }
+      }
+    },
     "The server answered with an error (%lld). Check the address points at FreshRSS.": {
       "extractionState": "manual",
       "localizations": {
@@ -2771,6 +2947,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Das Token konnte nicht gesichert werden: %@."
+          }
+        }
+      }
+    },
+    "Their posts stop arriving, and the ones already here are removed. Unmuting is done on your Mastodon server.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neue Beiträge kommen nicht mehr an, bereits geladene werden entfernt. Die Stummschaltung lässt sich nur auf dem Mastodon-Server aufheben."
           }
         }
       }
@@ -2940,6 +3127,17 @@
         }
       }
     },
+    "Visibility": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sichtbarkeit"
+          }
+        }
+      }
+    },
     "When": {
       "extractionState": "manual",
       "localizations": {
@@ -2969,6 +3167,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ganzes Wort"
+          }
+        }
+      }
+    },
+    "Write a reply…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antwort schreiben …"
           }
         }
       }
@@ -3057,6 +3266,52 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%lld Boosts, darunter der eigene"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "^[%lld character](inflect: true) left": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Noch %lld Zeichen frei"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Noch %lld Zeichen frei"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "^[%lld character](inflect: true) over the limit": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Zeichen zu viel"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Zeichen zu viel"
                 }
               }
             }
@@ -3332,6 +3587,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Text"
+          }
+        }
+      }
+    },
+    "this account": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dieses Konto"
           }
         }
       }

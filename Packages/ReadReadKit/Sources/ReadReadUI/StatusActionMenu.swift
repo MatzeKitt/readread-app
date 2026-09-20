@@ -21,7 +21,11 @@ enum StatusActionSymbol {
 
     static let reply = "bubble.left"
 
-    static let all = [favourite, favourited, boost, reply]
+    /// Muting. `speaker.slash` rather than `bell.slash`, which is notifications — this silences the
+    /// person, not the alerts about them.
+    static let mute = "speaker.slash"
+
+    static let all = [favourite, favourited, boost, reply, mute]
 }
 
 /// Like and Boost, for a Mastodon post.
@@ -43,7 +47,7 @@ struct StatusActionMenu: View {
     /// The actions are identical; only their presentation differs. A menu row wants its title
     /// beside its icon, and a toolbar draws the icon alone — so there the name has to be available
     /// on hover instead, the way every other button in that strip does it.
-    enum Placement {
+    enum Placement: Equatable {
         case contextMenu
         case toolbar
     }
@@ -56,6 +60,10 @@ struct StatusActionMenu: View {
     var placement: Placement = .contextMenu
 
     @Environment(AppServices.self) private var services
+
+    /// Where the reply sheet and the mute confirmation are put on screen. Optional so the menu
+    /// still renders in a preview, or anywhere else the shell's presentations are not installed.
+    @Environment(StatusComposer.self) private var composer: StatusComposer?
 
     private var isFavourited: Bool { item.isFavourited ?? false }
     private var isReblogged: Bool { item.isReblogged ?? false }
@@ -76,7 +84,47 @@ struct StatusActionMenu: View {
                 title: isReblogged ? "Remove Boost" : "Boost",
                 systemImage: StatusActionSymbol.boost
             )
+
+            // Not an `action(_:title:systemImage:)` like the two above, and deliberately not offered
+            // per account either. Liking and boosting happen *as* an account and are over when the
+            // request returns, so the choice belongs in the menu; a reply opens a composer, which
+            // has room to ask properly — and has to, because the account decides who the reply
+            // mentions and how far it can be seen.
+            Button("Reply…", systemImage: StatusActionSymbol.reply) {
+                guard composer?.reply(to: item) == true else {
+                    services.reportUnusableStatus()
+                    return
+                }
+            }
+            .modifier(ActionPresentation(placement: placement, title: "Reply"))
+
+            // Context menu only. A destructive action that removes posts from the list is not
+            // something to leave sitting as a bare icon in the reading pane's toolbar, one slip
+            // away from Like — and the reader asked for it on the list, which is where a person
+            // decides they have had enough of somebody.
+            if placement == .contextMenu {
+                Divider()
+
+                Button("Mute \(handle)", systemImage: StatusActionSymbol.mute, role: .destructive) {
+                    guard composer?.confirmMute(of: item) == true else {
+                        services.reportUnusableStatus()
+                        return
+                    }
+                }
+            }
         }
+    }
+
+    /// The author's `@user@host`, or a plain word when the row never recorded one.
+    ///
+    /// Named in the menu item rather than left as a bare "Mute", because on a boosted post the
+    /// person being muted is the one who *wrote* it, not the one who boosted it in — and the menu
+    /// is the only place that distinction can be made before the fact.
+    private var handle: String {
+        guard let handle = item.authorHandle, !handle.isEmpty else {
+            return item.authorName ?? String(localized: "this account")
+        }
+        return "@\(handle)"
     }
 
     /// One action: a plain button with a single account, a submenu with more than one.
