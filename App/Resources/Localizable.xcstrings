@@ -2126,6 +2126,17 @@
         }
       }
     },
+    "Reauthorise…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neu autorisieren …"
+          }
+        }
+      }
+    },
     "Refresh": {
       "extractionState": "manual",
       "localizations": {
@@ -2518,6 +2529,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Anmelden"
+          }
+        }
+      }
+    },
+    "Sign In Again…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut anmelden …"
+          }
+        }
+      }
+    },
+    "Sign in to this account again to grant permissions added since it was last authorised. Its reading position, saved items and cached posts are kept.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut bei diesem Konto anmelden, um seit der letzten Autorisierung hinzugekommene Berechtigungen zu erteilen. Leseposition, gesicherte Einträge und zwischengespeicherte Beiträge bleiben erhalten."
+          }
+        }
+      }
+    },
+    "Sign in to this server again to replace the stored API password. Its reading position, saved items and cached articles are kept.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut bei diesem Server anmelden, um das gespeicherte API-Passwort zu ersetzen. Leseposition, gesicherte Einträge und zwischengespeicherte Artikel bleiben erhalten."
           }
         }
       }

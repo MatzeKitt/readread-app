@@ -75,7 +75,7 @@ struct AccountSettingsTab: View {
                         // Its items leave the timeline and every count with it. Switching an
                         // account off and still seeing its posts in All Items reads as the switch
                         // not working.
-                        try? ThresholdService.setAccountEnabled(
+                        _ = try? ThresholdService.setAccountEnabled(
                             isEnabled,
                             forAccountID: account.id,
                             in: modelContext
@@ -207,6 +207,9 @@ private struct AccountRow: View {
     /// second Mac every synced account is signed out, and until this row said so the only sign of
     /// it was an empty timeline and a line in the last-refresh report that pointed at a button
     /// ("Add Account") which does not sound like the answer to "sign in again".
+    ///
+    /// It answers whether a credential *exists*, not whether it still works — which is exactly why
+    /// the button below is offered either way. See ``signInTitle``.
     let isSignedIn: Bool
 
     let onSignIn: () -> Void
@@ -235,10 +238,9 @@ private struct AccountRow: View {
 
             Spacer()
 
-            if !isSignedIn {
-                Button("Sign In", action: onSignIn)
-                    .controlSize(.small)
-            }
+            Button(signInTitle, action: onSignIn)
+                .controlSize(.small)
+                .help(signInHelp)
 
             Toggle("Enabled", isOn: $account.isEnabled)
                 .labelsHidden()
@@ -247,6 +249,43 @@ private struct AccountRow: View {
                 .onChange(of: account.isEnabled) { onEnabledChanged(account.isEnabled) }
         }
         .padding(.vertical, 2)
+    }
+
+    /// What the button says, which is the whole of this change.
+    ///
+    /// It used to appear only when the account had no credential, on the reasoning that an account
+    /// already signed in has nothing to sign in *for*. That is wrong in the two cases where it
+    /// matters, and both of them leave a working-looking row that cannot do its job:
+    ///
+    /// - **A Mastodon token cannot widen.** Its scopes are fixed at the moment it was granted, so an
+    ///   account authorised before the app asked to be allowed to like, boost, reply or mute keeps
+    ///   a token that cannot, and every such write comes back 403. Signing in again is the only
+    ///   thing that replaces it — see `MastodonSignInView.signIn()`, which renews in place.
+    /// - **A FreshRSS API password can change on the server.** The Keychain item is still there and
+    ///   is still wrong.
+    ///
+    /// Neither shows as "not signed in", because a credential does exist. Without this button the
+    /// only route was to remove the account and add it again — which deletes its cached items, its
+    /// cursors and, because the account list syncs, the account on every other device with it.
+    ///
+    /// Typed as `LocalizedStringKey` explicitly. A branch over string literals in a `Text` position
+    /// yields a `String`, takes the verbatim overload, and ships English with no warning — the same
+    /// trap `MastodonSignInView.title` records.
+    private var signInTitle: LocalizedStringKey {
+        guard isSignedIn else { return "Sign In" }
+        // Different words because they are different acts: one grants permissions, the other
+        // replaces a password.
+        return account.kind == .mastodon ? "Reauthorise…" : "Sign In Again…"
+    }
+
+    /// Says what pressing it costs, which is the question anyone hesitating over it is asking.
+    ///
+    /// macOS only in practice — `help` is a tooltip there and nothing on iOS — which is acceptable
+    /// because the answer is "nothing is lost" and the button is safe to try.
+    private var signInHelp: LocalizedStringKey {
+        account.kind == .mastodon
+            ? "Sign in to this account again to grant permissions added since it was last authorised. Its reading position, saved items and cached posts are kept."
+            : "Sign in to this server again to replace the stored API password. Its reading position, saved items and cached articles are kept."
     }
 
     private var subtitle: String {
