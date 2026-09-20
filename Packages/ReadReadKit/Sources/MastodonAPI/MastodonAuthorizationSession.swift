@@ -12,11 +12,15 @@ import ReadReadSupport
 @MainActor
 public final class MastodonAuthorizationSession {
 
-    /// Supplies the window the sheet is anchored to.
+    /// Supplies the window the sheet is anchored to, or `nil` if the app has none.
     ///
     /// Injected rather than reached for, because the anchor differs per platform and this type
     /// should not have to know which one it is running on.
-    public typealias AnchorProvider = @MainActor () -> ASPresentationAnchor
+    ///
+    /// Optional because a window cannot be conjured on demand: since iOS 26 every `UIWindow`
+    /// initialiser that takes no scene is deprecated, so with no connected scene the provider has
+    /// nothing to return. `authorize` turns that into an error the reader can act on.
+    public typealias AnchorProvider = @MainActor () -> ASPresentationAnchor?
 
     private let anchorProvider: AnchorProvider
     private var session: ASWebAuthenticationSession?
@@ -53,7 +57,10 @@ public final class MastodonAuthorizationSession {
         // This is a second instance of the hazard the completion handler below documents, not a
         // duplicate defence against the same one — the two are different callbacks reached by
         // different paths, and each has to opt out of the enclosing actor on its own.
-        let provider = ContextProvider(anchor: anchorProvider())
+        guard let anchor = anchorProvider() else {
+            throw MastodonError.authorizationFailed("No window to present the authorization sheet from")
+        }
+        let provider = ContextProvider(anchor: anchor)
         contextProvider = provider
 
         return try await withCheckedThrowingContinuation { continuation in

@@ -261,16 +261,26 @@ struct MastodonSignInView: View {
         )
     }
 
-    /// The window the authorisation sheet hangs off.
+    /// The window the authorisation sheet hangs off, or `nil` if the app has none to offer.
+    ///
+    /// Optional because on iOS there is no longer a way to invent one: every `UIWindow`
+    /// initialiser that does not take a `UIWindowScene` is deprecated as of iOS 26, and a window
+    /// with no scene could not have presented the sheet anyway. With no scene there is genuinely
+    /// nothing to anchor to, and saying so lets the caller fail with a message rather than hand
+    /// AuthenticationServices a window that will never appear.
     @MainActor
-    private static func presentationAnchor() -> ASPresentationAnchor {
+    private static func presentationAnchor() -> ASPresentationAnchor? {
         #if os(macOS)
-        NSApp.keyWindow ?? NSApp.windows.first ?? ASPresentationAnchor()
+        NSApp.keyWindow ?? NSApp.windows.first
         #else
-        let scene = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .first { $0.activationState == .foregroundActive }
-        return scene?.keyWindow ?? ASPresentationAnchor()
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        // The foreground-active scene first: on iPad and in Stage Manager several are connected at
+        // once, and the sheet belongs to the one the user is looking at.
+        guard let scene = scenes.first(where: { $0.activationState == .foregroundActive })
+            ?? scenes.first else {
+            return nil
+        }
+        return scene.keyWindow ?? scene.windows.first ?? ASPresentationAnchor(windowScene: scene)
         #endif
     }
 
