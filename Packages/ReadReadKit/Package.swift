@@ -102,7 +102,27 @@ let package = Package(
         .target(
             name: "ReadReadUI",
             dependencies: ["ReadReadSupport", "ReadReadModel", "FreshRSSAPI", "MastodonAPI", "ReadReadSync"],
-            swiftSettings: swiftSettings
+            swiftSettings: swiftSettings,
+            // `import AVKit` does **not** link AVKit, and the app crashed on every video because of
+            // it. Autolinking from that import brings in `AVFoundation`, `libswiftAVFoundation`
+            // and `_AVKit_SwiftUI` — the SwiftUI interop overlay — but not AVKit itself. So
+            // `_AVKit_SwiftUI` loads, SwiftUI asks it for `VideoPlayer`'s backing view, and the
+            // Swift runtime aborts initialising that class:
+            //
+            //     failed to demangle superclass of VideoPlayerView
+            //     from mangled name 'So12AVPlayerViewC': unknown error
+            //
+            // `So12AVPlayerViewC` is the Objective-C class `AVPlayerView`, which is not registered
+            // because the framework defining it was never loaded. Reproduced from a five-line
+            // SwiftUI app and fixed by this one line; it is not an optimisation or a stripping
+            // problem, and `-Onone` aborts identically.
+            //
+            // It looked like a Release-only bug because it is a load-order accident, not a build
+            // difference: `otool -L` shows *no* AVKit in either configuration. Something else in a
+            // debug session — WebKit's media stack behind the article reader is the likeliest —
+            // happened to pull AVKit in first, after which the class resolves and video plays. The
+            // debug build was equally capable of crashing; it just usually did not.
+            linkerSettings: [.linkedFramework("AVKit")]
         ),
 
         // For the parts of the UI layer that are ordinary logic rather than views: poll arithmetic,

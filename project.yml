@@ -108,6 +108,12 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: NO
         CODE_SIGN_ENTITLEMENTS: App/Resources/ReadRead.entitlements
+        # AVKit is *not* linked here, and deliberately not: `ReadReadUI` asks for it with
+        # `.linkedFramework("AVKit")` in `Package.swift`, beside the `import AVKit` that needs it,
+        # and Xcode carries that through to the app's link. Verified with `otool -L` on a Release
+        # build rather than assumed — a Debug build's `ReadRead` executable is only Xcode 26's
+        # debug-dylib shim and links almost nothing, so it answers this question wrongly. Without
+        # the framework the first video aborts the process; see the note in `Package.swift`.
       configs:
         Debug:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
