@@ -49,6 +49,12 @@ public struct RootView: View {
     /// started from a timeline row's context menu, and a row is recycled the instant it scrolls off.
     /// See `StatusComposer`.
     @State private var composer = StatusComposer()
+
+    /// The widths the two resizable columns open at, and where a drag is recorded. Read once, at
+    /// the window's creation — see `ColumnWidths` for why it must not change while the window is
+    /// open.
+    @State private var columnWidths = ColumnWidths()
+
     /// Optional because `List(selection:)` requires an optional binding — the non-optional
     /// form resolves to a macOS-only initialiser. Seeded to `.all` so the app opens on the
     /// unified timeline rather than an empty pane.
@@ -84,8 +90,13 @@ public struct RootView: View {
                 }
                 #endif
                 // Without an explicit width the sidebar collapses to around 140pt, which truncates
-                // most feed titles before their count badge.
-                .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 360)
+                // most feed titles before their count badge. The ideal is whatever it was last
+                // dragged to; see `ColumnWidths`.
+                .navigationSplitViewColumnWidth(
+                    min: ColumnWidths.sidebarLimits.lowerBound,
+                    ideal: columnWidths.sidebar,
+                    max: ColumnWidths.sidebarLimits.upperBound
+                )
                 .focused($focusedColumn, equals: .sidebar)
                 // From the sidebar, right moves into the timeline. Left is deliberately left to
                 // the list so it can still collapse a folder's disclosure.
@@ -100,9 +111,22 @@ public struct RootView: View {
                 counts: counts,
                 moveFocus: { focusedColumn = $0 }
             )
+            // Underneath the width modifier, and it has to be. `navigationSplitViewColumnWidth`
+            // writes a trait, and not every modifier passes one on: wrapping the column above it
+            // lost both traits outright, and the columns opened at SwiftUI's own 144 and 200
+            // points. Anything else a column needs therefore goes on first.
+            //
+            // Both columns are reported from this one place, because both are read off the single
+            // split view that carries them; see `ColumnWidthReporter`.
+            .background { ColumnWidthReporter(widths: columnWidths) }
             // Wide enough for a title plus a three-line excerpt to be worth reading, but capped
-            // so the article column keeps a comfortable measure.
-            .navigationSplitViewColumnWidth(min: 320, ideal: 400, max: 560)
+            // so the article column keeps a comfortable measure. This is the column macOS forgets
+            // on its own, which is what `ColumnWidths` is for.
+            .navigationSplitViewColumnWidth(
+                min: ColumnWidths.timelineLimits.lowerBound,
+                ideal: columnWidths.timeline,
+                max: ColumnWidths.timelineLimits.upperBound
+            )
             .focused($focusedColumn, equals: .timeline)
         } detail: {
             DetailView(

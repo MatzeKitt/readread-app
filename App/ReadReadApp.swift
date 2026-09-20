@@ -34,6 +34,13 @@ struct ReadReadApp: App {
         Self.seedFixturesIfRequested(in: container)
         #endif
 
+        #if os(macOS)
+        // Before the window exists, because AppKit restores the divider positions as the split
+        // view is built and a restored frame makes SwiftUI ignore the width the app asks for.
+        // `ColumnWidths` remembers both columns instead; its documentation has the measurements.
+        ColumnWidths.discardSystemAutosave()
+        #endif
+
         let settings = SettingsModel()
         _settings = State(initialValue: settings)
         _services = State(initialValue: AppServices(container: container, settings: settings))
