@@ -23,13 +23,13 @@
         }
       }
     },
-    "%@ has not allowed liking and boosting yet. Sign in to it again in Settings to grant it.": {
+    "%@ has not allowed this yet. Use Reauthorise on its row in Settings to grant it.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ erlaubt Favorisieren und Boosten noch nicht. Dazu in den Einstellungen erneut bei diesem Konto anmelden."
+            "value": "%@ hat dies noch nicht erlaubt. In den Einstellungen „Neu autorisieren“ in der Zeile des Kontos verwenden, um die Berechtigung zu erteilen."
           }
         }
       }
@@ -45,13 +45,13 @@
         }
       }
     },
-    "%@ is signed out. Sign in again to like and boost.": {
+    "%@ is signed out. Sign in again to act as it.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ ist abgemeldet. Zum Favorisieren und Boosten erneut anmelden."
+            "value": "%@ ist abgemeldet. Erneut anmelden, um in diesem Namen zu handeln."
           }
         }
       }
@@ -107,6 +107,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Der Server von %@ kennt diesen Beitrag nicht."
+          }
+        }
+      }
+    },
+    "%@'s server would not accept that. It may be too long.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server von %@ hat das nicht angenommen. Möglicherweise ist es zu lang."
           }
         }
       }
@@ -1741,17 +1752,6 @@
         }
       }
     },
-    "Only Mastodon posts can be liked or boosted.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nur Mastodon-Beiträge können favorisiert oder geboostet werden."
-          }
-        }
-      }
-    },
     "Only the saved summary is left: this item was put aside without an offline copy, and it is no longer in the cache.": {
       "extractionState": "manual",
       "localizations": {
@@ -2544,6 +2544,17 @@
         }
       }
     },
+    "That only works on Mastodon posts.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das ist nur bei Mastodon-Beiträgen möglich."
+          }
+        }
+      }
+    },
     "That page is too large to read here.": {
       "extractionState": "manual",
       "localizations": {
@@ -2804,6 +2815,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dieser Beitrag stammt nicht aus einem Mastodon-Account."
+          }
+        }
+      }
+    },
+    "This post does not say enough about its author to mute them.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zu diesem Beitrag ist kein Konto hinterlegt, das stummgeschaltet werden könnte."
           }
         }
       }

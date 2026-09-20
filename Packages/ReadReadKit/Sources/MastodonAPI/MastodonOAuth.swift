@@ -35,12 +35,17 @@ public struct MastodonOAuth: Sendable {
     /// Enumerated one by one rather than asking for the blanket `read`/`write`, so the token can do
     /// exactly what the app has a feature for and nothing else.
     ///
-    /// The two `write:` scopes are what favouriting and boosting need, and the second one is worth
-    /// being plain about: **`write:statuses` is the narrowest scope Mastodon offers for boosting,
-    /// and it also permits posting and deleting statuses.** There is no `write:reblogs`. So a token
-    /// this app holds can now, in principle, post as the reader — the app has no code that does,
-    /// but the scope no longer rules it out, and that is a real change from a token that could only
-    /// read. `write:favourites` by contrast is exactly favouriting.
+    /// The three `write:` scopes are what favouriting, boosting, replying and muting need, and they
+    /// are worth being plain about one at a time:
+    ///
+    /// - `write:favourites` is exactly favouriting, and nothing else.
+    /// - **`write:statuses` covers boosting, and posting, and deleting.** There is no
+    ///   `write:reblogs`, so this is the narrowest scope that allows a boost — and the app does now
+    ///   post with it: replying to a post is a status written as the reader. Deleting is still
+    ///   something the app has no code for, and the scope does not distinguish.
+    /// - **`write:mutes` covers muting and unmuting accounts, and also blocking and unblocking
+    ///   domains.** There is no narrower scope for a mute. The app only ever calls the mute
+    ///   endpoint, and never blocks anything.
     ///
     /// `read:search` is for one thing: resolving a post's URL on a *different* account's instance,
     /// so that "boost as…" can act as an account other than the one whose timeline the post
@@ -52,7 +57,7 @@ public struct MastodonOAuth: Sendable {
     /// **not** upgrade a token already granted: an existing account keeps its read-only token
     /// until the reader signs in again, and a write against it fails with
     /// ``MastodonError/writeNotAuthorized``, which the UI turns into a sentence saying so.
-    public static let scopes = "read:statuses read:accounts read:lists read:bookmarks read:favourites read:search write:favourites write:statuses"
+    public static let scopes = "read:statuses read:accounts read:lists read:bookmarks read:favourites read:search write:favourites write:statuses write:mutes"
 
     /// Where the instance sends the user back.
     ///

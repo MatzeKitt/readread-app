@@ -309,11 +309,11 @@ struct MastodonSignInView: View {
             return String(localized: "The authorisation did not complete. Start again, and finish in the window that opens.")
         case .unexpectedResponse:
             return String(localized: "That address answered, but not like a Mastodon instance.")
-        case .writeNotAuthorized, .statusNotFound:
-            // Neither can arise from signing in — they belong to liking and boosting, which
-            // happens long after this screen is gone. Answered generically rather than left to a
-            // `default`, so that adding a case to `MastodonError` keeps failing the build here
-            // until somebody has decided what this screen should say about it.
+        case .writeNotAuthorized, .statusNotFound, .rejected:
+            // None can arise from signing in — they belong to liking, boosting, replying and
+            // muting, which happen long after this screen is gone. Answered generically rather than
+            // left to a `default`, so that adding a case to `MastodonError` keeps failing the build
+            // here until somebody has decided what this screen should say about it.
             return String(localized: "Could not reach that instance. Check the address and your connection.")
         }
     }

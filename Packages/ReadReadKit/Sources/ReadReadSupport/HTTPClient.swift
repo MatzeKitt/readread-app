@@ -66,6 +66,16 @@ public enum HTTPError: Error, Sendable {
         if case .status(let code, _) = self { return code == 401 || code == 403 }
         return false
     }
+
+    /// The server understood the request and refused what it said.
+    ///
+    /// Kept apart from the rest of 4xx because it is the one that means *the content is wrong*
+    /// rather than *you are not allowed* or *it is not there* — so it is the only one whose answer
+    /// to the reader is "change what you wrote" rather than "sign in again" or "try later".
+    public var isUnprocessable: Bool {
+        if case .status(let code, _) = self { return code == 422 }
+        return false
+    }
 }
 
 /// How hard to retry.

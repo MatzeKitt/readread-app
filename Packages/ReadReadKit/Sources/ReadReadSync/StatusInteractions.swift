@@ -49,6 +49,19 @@ public struct StatusInteractions: Sendable {
         /// account other than the one the post arrived in.
         case notFoundOnInstance(account: String)
 
+        /// The instance read the post and refused it — over its character limit, most often.
+        ///
+        /// The only failure here whose answer is "change what you wrote" rather than "try again" or
+        /// "sign in again", which is why it is a case of its own.
+        case rejected(account: String)
+
+        /// The row carries no Mastodon account id for the person to be muted.
+        ///
+        /// A store written before the author's id was recorded, on a row whose payload will not
+        /// decode either. Its own case because "we cannot tell which account that is" is not the
+        /// same answer as "the server said no".
+        case noAuthorToMute
+
         /// Anything else: the instance is down, the network is gone, the post was deleted.
         case failed
     }
@@ -114,6 +127,41 @@ public struct StatusInteractions: Sendable {
         self.http = http
     }
 
+    /// What a reply says, and how it is to be sent.
+    ///
+    /// A value rather than a pile of parameters, because it is assembled in the composer, carried
+    /// across an actor hop, and — the part that matters — has to survive a *retry* unchanged. See
+    /// ``idempotencyKey``.
+    public struct Reply: Sendable, Equatable {
+
+        public var text: String
+
+        /// The content warning. Empty means none.
+        public var spoilerText: String
+
+        public var visibility: MastodonVisibility
+
+        /// Identifies this draft to the instance, so a retry cannot post it twice.
+        ///
+        /// Belongs to the *draft*, not to the attempt: it is minted once when the composer opens
+        /// and travels with the text. A key generated at send time would be a new key on every
+        /// retry, which is exactly the same as having none — and the failure that buys is two
+        /// copies of a reply, published, with nothing in the app to say it happened.
+        public var idempotencyKey: String
+
+        public init(
+            text: String,
+            spoilerText: String = "",
+            visibility: MastodonVisibility,
+            idempotencyKey: String = UUID().uuidString
+        ) {
+            self.text = text
+            self.spoilerText = spoilerText
+            self.visibility = visibility
+            self.idempotencyKey = idempotencyKey
+        }
+    }
+
     /// Carries out one action.
     ///
     /// - Parameters:
@@ -129,42 +177,14 @@ public struct StatusInteractions: Sendable {
         as account: Actor,
         isOwningAccount: Bool
     ) async throws -> Outcome {
-        guard
-            let serverURLString = account.serverURLString,
-            let serverURL = URL(string: serverURLString)
-        else {
-            throw Failure.invalidServerURL(account: account.displayName)
-        }
-
-        guard let token = try? await keychain.string(
-            for: .mastodonAccessToken,
-            key: account.id.uuidString
-        ), !token.isEmpty else {
-            throw Failure.missingCredential(account: account.displayName)
-        }
-
-        let client = MastodonClient(instanceURL: serverURL, accessToken: token, http: http)
-
-        // Which id to act on. The owning account's instance minted the one the row already holds;
-        // any other account has to be told the URL and asked what it calls the post.
-        let targetID: MastodonStatusID
-        if isOwningAccount {
-            targetID = MastodonStatusID(statusID)
-        } else {
-            guard let statusURL else {
-                throw Failure.notFoundOnInstance(account: account.displayName)
-            }
-            do {
-                guard let resolved = try await client.resolveStatus(url: statusURL) else {
-                    throw Failure.notFoundOnInstance(account: account.displayName)
-                }
-                targetID = resolved.displayStatus.id
-            } catch let failure as Failure {
-                throw failure
-            } catch {
-                throw Self.failure(from: error, account: account.displayName)
-            }
-        }
+        let client = try await client(for: account)
+        let targetID = try await targetID(
+            statusID: statusID,
+            statusURL: statusURL,
+            on: client,
+            as: account,
+            isOwningAccount: isOwningAccount
+        )
 
         do {
             let updated: MastodonStatus
@@ -186,6 +206,132 @@ public struct StatusInteractions: Sendable {
                 reblogCount: subject.reblogsCount,
                 describesOwningAccount: isOwningAccount
             )
+        } catch {
+            throw Self.failure(from: error, account: account.displayName)
+        }
+    }
+
+    // MARK: - Replying
+
+    /// Posts a reply to a status, as one of the reader's accounts.
+    ///
+    /// Reaches the same two-instance problem boosting has, and solves it the same way: a status id
+    /// belongs to the instance that minted it, so replying as a *different* account means resolving
+    /// the post by its URL first. Handled here rather than by the composer, which has no business
+    /// knowing that a post has more than one id.
+    ///
+    /// Answers with nothing. The instance returns the reply it has just created, and there is
+    /// nothing on the row worth taking from it — the reply is not in this timeline and will not be:
+    /// the home timeline carries what the reader follows, and this is something they wrote. What the
+    /// caller does with the successful return is bump the parent's reply count by one, which is the
+    /// one fact the instance has just made true.
+    public func reply(
+        _ reply: Reply,
+        toStatusID statusID: String,
+        statusURL: URL?,
+        as account: Actor,
+        isOwningAccount: Bool
+    ) async throws {
+        let client = try await client(for: account)
+        let targetID = try await targetID(
+            statusID: statusID,
+            statusURL: statusURL,
+            on: client,
+            as: account,
+            isOwningAccount: isOwningAccount
+        )
+
+        do {
+            _ = try await client.postStatus(
+                reply.text,
+                inReplyTo: targetID,
+                visibility: reply.visibility,
+                spoilerText: reply.spoilerText,
+                idempotencyKey: reply.idempotencyKey
+            )
+        } catch {
+            throw Self.failure(from: error, account: account.displayName)
+        }
+    }
+
+    // MARK: - Muting
+
+    /// Mutes an account, as the account whose timeline its post arrived in.
+    ///
+    /// **Only ever the owning account**, and that is a property of muting rather than a shortcut
+    /// taken here. Liking and boosting are things any of the reader's accounts can do to a post;
+    /// muting is a statement about *one* account's own timeline — it is that account that stops
+    /// receiving the posts. Muting "as" some other account would silence a timeline the reader was
+    /// not looking at and leave the one they were looking at unchanged, which is the exact opposite
+    /// of what the menu item appears to promise.
+    ///
+    /// It also could not work. The id below is minted by the owning account's instance, and there
+    /// is no equivalent of ``MastodonClient/resolveStatus(url:)`` in play for accounts here: a
+    /// second instance would have to be asked to look the person up by handle first, which is a
+    /// second round trip to make an action do something nobody asked for.
+    ///
+    /// - Parameter authorAccountID: The post author's id **on the owning account's instance**.
+    public func mute(authorAccountID: String, as account: Actor) async throws {
+        guard !authorAccountID.isEmpty else { throw Failure.noAuthorToMute }
+
+        let client = try await client(for: account)
+        do {
+            _ = try await client.mute(authorAccountID)
+        } catch {
+            throw Self.failure(from: error, account: account.displayName)
+        }
+    }
+
+    // MARK: - Shared plumbing
+
+    /// A client for one account, with its token read from the Keychain and held no longer than the
+    /// call.
+    ///
+    /// The token never goes anywhere else: it is not returned, not logged, and not stored on this
+    /// struct — the same arrangement `AccountConnections` uses, so that nothing above this layer
+    /// has any way to ask for one.
+    private func client(for account: Actor) async throws -> MastodonClient {
+        guard
+            let serverURLString = account.serverURLString,
+            let serverURL = URL(string: serverURLString)
+        else {
+            throw Failure.invalidServerURL(account: account.displayName)
+        }
+
+        guard let token = try? await keychain.string(
+            for: .mastodonAccessToken,
+            key: account.id.uuidString
+        ), !token.isEmpty else {
+            throw Failure.missingCredential(account: account.displayName)
+        }
+
+        return MastodonClient(instanceURL: serverURL, accessToken: token, http: http)
+    }
+
+    /// What the acting instance calls this post.
+    ///
+    /// The owning account's instance minted the id the row already holds; any other account has to
+    /// be told the URL and asked what *it* calls the post, because a status id is local to the
+    /// instance that issued it.
+    private func targetID(
+        statusID: String,
+        statusURL: URL?,
+        on client: MastodonClient,
+        as account: Actor,
+        isOwningAccount: Bool
+    ) async throws -> MastodonStatusID {
+        if isOwningAccount { return MastodonStatusID(statusID) }
+
+        guard let statusURL else {
+            throw Failure.notFoundOnInstance(account: account.displayName)
+        }
+        do {
+            guard let resolved = try await client.resolveStatus(url: statusURL) else {
+                throw Failure.notFoundOnInstance(account: account.displayName)
+            }
+            return resolved.displayStatus.id
+        } catch let failure as Failure {
+            throw failure
         } catch {
             throw Self.failure(from: error, account: account.displayName)
         }
@@ -227,6 +373,7 @@ public struct StatusInteractions: Sendable {
             case .tokenRevoked: return .tokenRevoked(account: account)
             case .statusNotFound: return .notFoundOnInstance(account: account)
             case .invalidInstanceURL: return .invalidServerURL(account: account)
+            case .rejected: return .rejected(account: account)
             case .unexpectedResponse, .authorizationFailed: return .failed
             }
         }

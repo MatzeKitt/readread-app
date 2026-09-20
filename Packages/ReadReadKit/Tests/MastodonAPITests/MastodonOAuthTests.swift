@@ -37,7 +37,8 @@ struct MastodonOAuthTests {
     /// `write:reports`), the blanket `write`, and push. Note what this cannot rule out:
     /// `write:statuses` is the only scope Mastodon offers for boosting and it also permits posting,
     /// so the grant is wider than the feature. That is a property of the API, and it is documented
-    /// at ``MastodonOAuth/scopes``.
+    /// at ``MastodonOAuth/scopes``, as is the same problem with `write:mutes`, which is the only
+    /// scope offered for muting and also permits blocking domains.
     @Test("The scope set is exactly what the features need")
     func scopeSetIsExact() {
         let scopes = Set(MastodonOAuth.scopes.split(separator: " ").map(String.init))
@@ -51,6 +52,7 @@ struct MastodonOAuthTests {
             "read:search",
             "write:favourites",
             "write:statuses",
+            "write:mutes",
         ])
 
         // Spelled out separately from the equality above, because these are the ones whose absence

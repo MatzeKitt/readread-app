@@ -32,6 +32,91 @@ public enum MastodonError: Error, Sendable {
     /// is resolved by URL on the other instance, and an instance that has not federated it — or
     /// that blocks the origin — returns nothing to act on.
     case statusNotFound
+
+    /// The instance understood the request and refused what it said.
+    ///
+    /// A 422, which for a post means the instance's own rules: over its character limit, an empty
+    /// body, a visibility it does not allow, a poll it will not accept. Distinct from
+    /// ``writeNotAuthorized`` because nothing about signing in again would help — the reader has to
+    /// change what they wrote.
+    case rejected
+}
+
+/// How widely a post is shown.
+///
+/// Its own type rather than the raw string, because the one rule worth enforcing is a comparison
+/// between two of them: **a reply must never be more visible than the post it answers.** Replying
+/// publicly to a followers-only post republishes the fact that the post exists, to an audience its
+/// author deliberately excluded — and the reply quotes it by being attached to it.
+public enum MastodonVisibility: String, Codable, Sendable, CaseIterable {
+
+    /// Public timelines, anywhere.
+    case `public`
+
+    /// Visible to anyone with the link, but kept out of the public timelines.
+    case unlisted
+
+    /// Followers only.
+    case `private`
+
+    /// Only the people mentioned.
+    case direct
+
+    /// How far this reaches, for comparison only. Larger is wider.
+    ///
+    /// Not `Comparable`: the numbers are an ordering of audiences, not a scale, and nothing should
+    /// be tempted to do arithmetic on them.
+    var reach: Int {
+        switch self {
+        case .public: 3
+        case .unlisted: 2
+        case .private: 1
+        case .direct: 0
+        }
+    }
+
+    /// What a reply to a post of this visibility may be sent as.
+    ///
+    /// Ordered widest first, so the picker reads the way the composer's own default sits at the
+    /// top. The parent's own visibility is always in the list, so there is always something to
+    /// choose — and it is always the default; see ``defaultForReply(to:)``.
+    public static func allowedForReply(to parent: MastodonVisibility) -> [MastodonVisibility] {
+        allCases
+            .filter { $0.reach <= parent.reach }
+            .sorted { $0.reach > $1.reach }
+    }
+
+    /// What a reply starts out as.
+    ///
+    /// The parent's own visibility, which is both the safe answer and the expected one: answering a
+    /// followers-only post should stay among followers without the reader having to notice, and
+    /// answering a public post publicly is what a public conversation is.
+    public static func defaultForReply(to parent: MastodonVisibility) -> MastodonVisibility {
+        parent
+    }
+
+    /// Reads a status's `visibility` string, defaulting to the narrowest sensible answer.
+    ///
+    /// An unknown value defaults to ``private`` rather than to `public`, because a visibility this
+    /// build does not recognise is one an instance has added — and guessing wide on something
+    /// unknown is how a reply escapes the audience its parent had.
+    public init(statusValue: String) {
+        self = MastodonVisibility(rawValue: statusValue) ?? .private
+    }
+}
+
+/// How the acting account stands towards another account.
+///
+/// Only the fields this app acts on. The endpoint returns a great deal more — following, blocking,
+/// notes, domain blocks — and decoding what is never read would make the type look like a surface
+/// the app has, which it does not.
+public struct MastodonRelationship: Codable, Sendable {
+
+    public let id: String
+
+    /// Documented as always present; optional so an instance that omits it cannot fail the decode
+    /// of a request that otherwise succeeded.
+    public let muting: Bool?
 }
 
 /// One page of a timeline, plus where to continue.
@@ -176,6 +261,87 @@ public actor MastodonClient {
         return results.statuses.first
     }
 
+    // MARK: - Muting
+
+    /// Stops an account's posts reaching this account's home timeline.
+    ///
+    /// `notifications: true` — the endpoint's own default — so muting also silences the person's
+    /// replies and mentions. A mute that left notifications coming through would not be the thing
+    /// the word means to anyone using it, and the reader who reached for it would have to find the
+    /// second switch themselves.
+    ///
+    /// No duration is sent, so the mute is indefinite. Mastodon's `duration` is for temporary
+    /// mutes, and offering a timer in a context menu is a different feature from the one this is.
+    ///
+    /// - Parameter accountID: The account's id **on this instance**. Ids are minted per instance,
+    ///   so this is only ever the id the acting account's own server knows the person by — which is
+    ///   the reason ``StatusInteractions`` only ever mutes as the account a post arrived in.
+    public func mute(_ accountID: String, notifications: Bool = true) async throws -> MastodonRelationship {
+        var request = try request(path: "api/v1/accounts/\(accountID)/mute", query: [])
+        request.httpMethod = "POST"
+        Self.setForm(["notifications": notifications ? "true" : "false"], on: &request)
+
+        let reply = try await authorizedReply(for: request, isWrite: true)
+        do {
+            return try JSONDecoder.mastodon.decode(MastodonRelationship.self, from: reply.data)
+        } catch let error as DecodingError {
+            throw MastodonError.unexpectedResponse(String(describing: error))
+        }
+    }
+
+    // MARK: - Posting
+
+    /// Posts a status, optionally as a reply to another.
+    ///
+    /// - Parameter idempotencyKey: Sent as `Idempotency-Key`, and not optional on purpose. A reply
+    ///   is the one request in this app where a retry is genuinely dangerous: `HTTPClient` retries a
+    ///   5xx, and a gateway that times out *after* the instance accepted the post would otherwise
+    ///   produce the post twice, publicly, with no way to tell it happened. Mastodon collapses
+    ///   repeats of the same key onto the first post for some hours, which turns that into a no-op.
+    ///   The key must therefore be derived from the draft and stay the same across retries — never
+    ///   generated per attempt.
+    /// - Parameter spoilerText: The content warning. Empty means none; the field is only sent when
+    ///   it has something in it, because sending `spoiler_text=` empty marks some instances' posts
+    ///   as warned with a blank warning.
+    public func postStatus(
+        _ text: String,
+        inReplyTo: MastodonStatusID? = nil,
+        visibility: MastodonVisibility,
+        spoilerText: String = "",
+        idempotencyKey: String
+    ) async throws -> MastodonStatus {
+        var fields = [
+            "status": text,
+            "visibility": visibility.rawValue,
+        ]
+        if let inReplyTo {
+            fields["in_reply_to_id"] = inReplyTo.rawValue
+        }
+        let warning = spoilerText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !warning.isEmpty {
+            fields["spoiler_text"] = warning
+        }
+
+        var request = try request(path: "api/v1/statuses", query: [])
+        request.httpMethod = "POST"
+        request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        Self.setForm(fields, on: &request)
+
+        do {
+            let reply = try await authorizedReply(for: request, isWrite: true)
+            do {
+                return try JSONDecoder.mastodon.decode(MastodonStatus.self, from: reply.data)
+            } catch let error as DecodingError {
+                throw MastodonError.unexpectedResponse(String(describing: error))
+            }
+        } catch let error as HTTPError where error.isUnprocessable {
+            // The instance read it and said no — over its character limit, or a visibility it does
+            // not offer. Its own explanation is in the body and is deliberately not carried out of
+            // here: an `HTTPError` holds the request, whose header holds the token.
+            throw MastodonError.rejected
+        }
+    }
+
     // MARK: - Link header
 
     /// Extracts the `max_id` of the `rel="next"` link.
@@ -292,6 +458,38 @@ public actor MastodonClient {
 
     private func request(path: String, query: [URLQueryItem]) throws -> URLRequest {
         URLRequest(url: try Self.endpoint(instanceURL: instanceURL, path: path, query: query))
+    }
+
+    /// Attaches a form-encoded body, and the header that says so.
+    ///
+    /// Form-encoded rather than JSON because that is what the Mastodon API documents for these
+    /// endpoints, and what every instance and every reverse proxy in front of one is certain to
+    /// accept. `Content-Length` comes along with it for the same reason ``write(_:)`` sets one.
+    ///
+    /// Percent-encoding against an explicit unreserved set rather than `.urlQueryAllowed`, which
+    /// permits `&`, `=` and `+` through — so a post containing any of them would be read back by
+    /// the instance as extra form fields, or have its pluses turned into spaces. A reply is free
+    /// text written by a person, so it contains those characters routinely.
+    static func setForm(_ fields: [String: String], on request: inout URLRequest) {
+        let unreserved = CharacterSet(
+            charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+        )
+        let body = fields
+            // Sorted so the body is a function of the fields alone: an idempotency key covers a
+            // repeat of the same post, and a test asserting on a body cannot assert on a dictionary
+            // ordering that changes per launch.
+            .sorted { $0.key < $1.key }
+            .map { key, value in
+                let encodedKey = key.addingPercentEncoding(withAllowedCharacters: unreserved) ?? key
+                let encodedValue = value.addingPercentEncoding(withAllowedCharacters: unreserved) ?? value
+                return "\(encodedKey)=\(encodedValue)"
+            }
+            .joined(separator: "&")
+            .data(using: .utf8) ?? Data()
+
+        request.setValue("application/x-www-form-urlencoded; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        request.setValue(String(body.count), forHTTPHeaderField: "Content-Length")
+        request.httpBody = body
     }
 
     /// Builds an endpoint URL, tolerating however the user typed the instance.

@@ -359,6 +359,127 @@ public final class AppServices {
         }
     }
 
+    /// Posts a reply to a Mastodon post, as one of the reader's accounts.
+    ///
+    /// Takes the parent's *displayed* id and URL from the row for the same reason
+    /// ``favouriteOrBoost(_:on:as:)`` does: a boost's own id names the act of boosting, and the
+    /// URL is the only name for a post that two instances agree on.
+    ///
+    /// On success the parent's reply count goes up by one locally. Not a guess — the instance has
+    /// just accepted the reply, so one more reply is exactly what is true — and the alternative is a
+    /// row that says "3 replies" directly after the reader wrote the fourth.
+    ///
+    /// - Returns: A sentence to show when it failed, or nil on success.
+    @discardableResult
+    public func reply(
+        _ reply: StatusInteractions.Reply,
+        to item: CachedItem,
+        as account: StatusInteractions.Actor
+    ) async -> String? {
+        guard
+            item.kind == .status,
+            let payload = item.mastodonPayload,
+            let status = try? JSONDecoder.mastodon.decode(MastodonStatus.self, from: payload)
+        else {
+            return Self.describe(StatusInteractions.Failure.notAStatus)
+        }
+
+        do {
+            try await StatusInteractions().reply(
+                reply,
+                toStatusID: status.displayStatus.id.rawValue,
+                statusURL: item.url,
+                as: account,
+                isOwningAccount: item.accountID == account.id
+            )
+            item.replyCount += 1
+            lastActionFailure = nil
+            try? modelContext.save()
+            return nil
+        } catch let failure as StatusInteractions.Failure {
+            return report(failure)
+        } catch {
+            return report(.failed)
+        }
+    }
+
+    /// Mutes a post's author, and clears what they have already put in the timeline.
+    ///
+    /// Two halves that have to be read together. The instance stops delivering their posts, which
+    /// only affects what arrives *next*; and the rows already fetched are deleted, which is what
+    /// makes the action mean what the menu item says. See ``AuthorMute``.
+    ///
+    /// Always as the account the post arrived in — see ``StatusInteractions/mute(authorAccountID:as:)``
+    /// for why muting is not an action other accounts can take on your behalf. The caller does not
+    /// get to choose, which is why there is no `as:` here.
+    ///
+    /// The server half goes first. A local sweep that ran before it would leave the reader looking
+    /// at an empty space while the instance carried on sending, and a failed mute would have taken
+    /// their posts away without silencing anyone.
+    ///
+    /// - Returns: A sentence to show when it failed, or nil on success.
+    @discardableResult
+    public func muteAuthor(of item: CachedItem) async -> String? {
+        guard
+            item.kind == .status,
+            let payload = item.mastodonPayload,
+            let status = try? JSONDecoder.mastodon.decode(MastodonStatus.self, from: payload)
+        else {
+            return Self.describe(StatusInteractions.Failure.notAStatus)
+        }
+
+        // The *displayed* status's author: the person whose words these are. On a boost that is the
+        // original poster rather than whoever boosted it in, which matches the name the row shows.
+        let author = status.displayStatus.account
+        let owningAccountID = item.accountID
+
+        guard let record = account(withID: owningAccountID) else {
+            return report(.noAuthorToMute)
+        }
+        let actor = StatusInteractions.Actor(
+            id: record.id,
+            displayName: record.displayName,
+            serverURLString: record.serverURLString
+        )
+
+        do {
+            try await StatusInteractions().mute(authorAccountID: author.id, as: actor)
+        } catch let failure as StatusInteractions.Failure {
+            return report(failure)
+        } catch {
+            return report(.failed)
+        }
+
+        // Only after the instance agreed. The handle comes from the payload that was just decoded,
+        // which is the same `acct` the rows were written from — see `AuthorMute.normalised(_:)` for
+        // why an exact match is what is wanted here.
+        _ = try? AuthorMute.removeItems(
+            byAuthorHandle: author.acct,
+            accountID: owningAccountID,
+            in: modelContext
+        )
+        lastActionFailure = nil
+        try? modelContext.save()
+        return nil
+    }
+
+    /// Says that a row cannot be acted on, in the same words every other such failure uses.
+    ///
+    /// For the two actions that open something before they do anything — the reply composer and the
+    /// mute confirmation. Both need the row's stored payload to decode, and when it does not there
+    /// is nothing to open; without this the menu item would simply do nothing at all, which is
+    /// indistinguishable from the app being broken.
+    public func reportUnusableStatus() {
+        report(.notAStatus)
+    }
+
+    /// One of the reader's accounts, by id.
+    private func account(withID id: UUID) -> AccountRecord? {
+        var descriptor = FetchDescriptor<AccountRecord>(predicate: #Predicate { $0.id == id })
+        descriptor.fetchLimit = 1
+        return try? modelContext.fetch(descriptor).first
+    }
+
     /// Publishes a failure and hands the same sentence back to the caller.
     ///
     /// Both, deliberately: the property is what raises the alert, and the return value is what
@@ -387,20 +508,29 @@ public final class AppServices {
     private static func describe(_ failure: StatusInteractions.Failure) -> String {
         switch failure {
         case .notAStatus:
-            String(localized: "Only Mastodon posts can be liked or boosted.")
+            String(localized: "That only works on Mastodon posts.")
         case .missingCredential(let account):
-            String(localized: "\(account) is signed out. Sign in again to like and boost.")
+            String(localized: "\(account) is signed out. Sign in again to act as it.")
         case .invalidServerURL(let account):
             String(localized: "\(account) has no usable server address.")
         case .writeNotAuthorized(let account):
-            // The case a reader hits first after this feature ships, so it says what to do rather
-            // than what went wrong: the token was granted before the app asked to be allowed to
-            // like and boost, and only signing in again can widen it.
-            String(localized: "\(account) has not allowed liking and boosting yet. Sign in to it again in Settings to grant it.")
+            // The case a reader hits first after each of these features ships, so it says what to
+            // do rather than what went wrong: the token was granted before the app asked for the
+            // scope the action needs, and only signing in again can widen it. It names the button
+            // in so many words — there is a Reauthorise on the account's row in Settings, and a
+            // message that only says "sign in again" sends people to Add Account instead.
+            String(localized: "\(account) has not allowed this yet. Use Reauthorise on its row in Settings to grant it.")
         case .tokenRevoked(let account):
             String(localized: "\(account) is no longer authorised. Sign in to it again.")
         case .notFoundOnInstance(let account):
             String(localized: "\(account)'s server cannot find this post.")
+        case .rejected(let account):
+            // The instance said what was wrong with it, in the response body, and that body is
+            // deliberately not repeated here — see `StatusInteractions.Failure`. Length is what it
+            // is nearly always, so length is what this names.
+            String(localized: "\(account)'s server would not accept that. It may be too long.")
+        case .noAuthorToMute:
+            String(localized: "This post does not say enough about its author to mute them.")
         case .failed:
             String(localized: "That did not work. The server may be unreachable.")
         }
