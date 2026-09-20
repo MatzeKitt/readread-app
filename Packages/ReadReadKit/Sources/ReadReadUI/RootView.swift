@@ -158,7 +158,7 @@ public struct RootView: View {
             // First of all, and before any count or list is built: the timeline's sort key
             // changed basis, so a store written by an earlier build holds items and markers that
             // do not compare with each other. See `SortBasisMigration`.
-            try? SortBasisMigration.runIfNeeded(
+            _ = try? SortBasisMigration.runIfNeeded(
                 deviceID: DeviceIdentity.current.id,
                 in: modelContext
             )
@@ -176,7 +176,7 @@ public struct RootView: View {
             // Before anything counts: an account switched off on another device arrives by sync
             // with no toggle to run, and a store written before the flag existed has every item
             // marked enabled. Both leave the timeline showing items it should not.
-            try? ThresholdService.reconcileAccountVisibility(in: modelContext)
+            _ = try? ThresholdService.reconcileAccountVisibility(in: modelContext)
 
             // Folder and feed markers written before positions cascaded are still sitting where
             // first sync left them, so their counts read far higher than the `All Items` count

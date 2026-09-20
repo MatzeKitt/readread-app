@@ -405,9 +405,18 @@ struct TimelineFoldReader: NSViewRepresentable {
             // in an event-tracking mode — which is precisely when a refresh landing mid-scroll
             // needs it.
             RunLoop.main.perform(inModes: [.common]) { [weak self] in
+                // `RunLoop.main` runs what it is given on the main thread, which is the main actor
+                // — but the closure is `@Sendable` and carries no isolation of its own, so the
+                // compiler cannot see that and the `Handle`'s state is all main-actor. Asserted
+                // rather than hopped through a `Task { @MainActor in … }`, which would give up the
+                // one property this scheduling exists for: a run-loop block is serviced in
+                // event-tracking mode, and a task is not, so a refresh landing mid-scroll would
+                // have its correction held until the scroll ended.
                 guard let self else { return }
-                correctionScheduled = false
-                applyCorrection()
+                MainActor.assumeIsolated {
+                    self.correctionScheduled = false
+                    self.applyCorrection()
+                }
             }
         }
 
