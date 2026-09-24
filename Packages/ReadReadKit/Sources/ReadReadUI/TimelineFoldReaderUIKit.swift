@@ -76,6 +76,32 @@ struct TimelineFoldReader: UIViewRepresentable {
         /// The fold row alone, for the callers that do not care where it sits.
         var foldRow: Int? { foldReading?.row }
 
+        /// Every row the viewport shows any of, from the top edge to the bottom.
+        ///
+        /// The counterpart to the AppKit reader's, and wider than the fold for the reason given
+        /// there: an item can sit below the reading position and still be on screen, and something
+        /// on screen has not been missed.
+        ///
+        /// `indexPathsForVisibleItems` is the collection view's own answer and can include a cell
+        /// attached just beyond the edge. That errs towards calling something seen, which is the
+        /// harmless direction here — the alternative is telling the reader that an item they were
+        /// looking at had been missed.
+        var visibleRows: ClosedRange<Int>? {
+            if collectionView == nil { resolve?() }
+            guard let collectionView else { return nil }
+
+            var lowest: Int?
+            var highest: Int?
+            for path in collectionView.indexPathsForVisibleItems {
+                let row = flatRow(of: path, in: collectionView)
+                if lowest == nil || row < lowest! { lowest = row }
+                if highest == nil || row > highest! { highest = row }
+            }
+
+            guard let lowest, let highest else { return nil }
+            return lowest...highest
+        }
+
         /// Slack when deciding whether a cell's top is above the viewport's.
         ///
         /// Both numbers land on fractional pixels, so an exactly aligned cell compares as a hair

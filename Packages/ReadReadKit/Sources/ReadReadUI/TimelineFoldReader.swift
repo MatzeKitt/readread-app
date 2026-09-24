@@ -110,6 +110,30 @@ struct TimelineFoldReader: NSViewRepresentable {
         /// The fold row alone, for the callers that do not care where it sits.
         var foldRow: Int? { foldReading?.row }
 
+        /// Every row the viewport shows any of, from the top edge to the bottom.
+        ///
+        /// Deliberately wider than the fold, and wider than "entirely below the top edge" — the
+        /// question it answers is what the reader can see, not where they have read to, and those
+        /// differ by a whole screen. An item can sit below the reading position and still be on
+        /// screen, and something on screen has not been missed. See
+        /// `TimelineList.clearSeenLateArrivals()`.
+        var visibleRows: ClosedRange<Int>? {
+            if table == nil { resolve?() }
+            guard let table, table.numberOfRows > 0,
+                  let clip = table.enclosingScrollView?.contentView
+            else {
+                return nil
+            }
+
+            // The clip's bounds are the visible area; converting them into the table's own
+            // coordinates is what `rows(in:)` expects, exactly as ``viewportTop`` does.
+            let range = table.rows(in: table.convert(clip.bounds, from: clip))
+            guard range.location >= 0, range.length > 0 else { return nil }
+            let last = min(range.location + range.length - 1, table.numberOfRows - 1)
+            guard range.location <= last else { return nil }
+            return range.location...last
+        }
+
         /// Slack when deciding whether a row's top is above the viewport's.
         ///
         /// Both numbers come from view geometry and land on fractional pixels, so an exactly

@@ -301,6 +301,29 @@ enum PositionPublication {
     }
 }
 
+/// Which of a list's items a row range reported by the backing view actually names.
+///
+/// Its own type because the arithmetic is where this goes wrong and the consequence is silent: the
+/// range comes from a table that has its own idea of how many rows it holds, and the array it is
+/// being applied to is the one SwiftUI is about to hand it. When they disagree — mid-insertion,
+/// mid-prune — an unclamped range either traps or names the wrong items, and here that would take
+/// the older-item mark off articles the reader has never seen.
+enum VisibleRows {
+
+    /// The reported range, narrowed to the rows that exist.
+    ///
+    /// `nil` when nothing was reported, when the list is empty, or when the range lies entirely
+    /// past the end — all three meaning "nothing on screen to act on", which is the answer the
+    /// caller wants in each case.
+    static func clamped(_ rows: ClosedRange<Int>?, count: Int) -> ClosedRange<Int>? {
+        guard let rows, count > 0 else { return nil }
+        let first = max(rows.lowerBound, 0)
+        let last = min(rows.upperBound, count - 1)
+        guard first <= last else { return nil }
+        return first...last
+    }
+}
+
 /// The window subtitle and the debounced position write, both of which follow the fold.
 ///
 /// Its own view so that reading the fold takes a dependency *here* rather than in the list. Held
@@ -793,6 +816,13 @@ private struct TimelineList: View {
     /// How long to let layout settle between restore attempts.
     private static let restoreSettleDelay = Duration.milliseconds(60)
 
+    /// How long to let an arrival settle before deciding what is on screen.
+    ///
+    /// Comfortably longer than ``anchorHoldWindow``: within that window the hold is still moving
+    /// the list, so the rows in front of the reader are not final yet, and the only cost of
+    /// waiting is that an item stays marked as an older item for half a second longer.
+    private static let arrivalSettleDelay = Duration.milliseconds(600)
+
     /// How long the fold is kept against its offset after items arrive above it.
     ///
     /// The correction itself is applied by the backing view's own geometry pass — see
@@ -1232,6 +1262,20 @@ private struct TimelineList: View {
                 }
                 holdScrollAnchor(previousCount: previousCount, proxy: proxy)
             }
+            // An arrival can put a freshly flagged row on screen without the fold ever moving, and
+            // the commit's clearing only runs when the fold changes. So the other half of it lives
+            // here, where the rows land.
+            //
+            // Deferred, because the indices are read from the backing view's layout and reading
+            // them mid-insertion names the wrong items — and because an arrival above the reader
+            // arms a hold that is still moving the list for a while afterwards. A `.task(id:)`
+            // rather than a loose `Task`, so leaving the list cancels it: a stale clearing pass
+            // would be applying one scope's row indices to another scope's items.
+            .task(id: items.count) {
+                try? await Task.sleep(for: Self.arrivalSettleDelay)
+                guard !Task.isCancelled, hasRestored else { return }
+                clearSeenLateArrivals()
+            }
             .task(id: sources.count) {
                 sourceTitles = Self.titles(of: sources)
                 sourceIcons = Self.icons(of: sources)
@@ -1367,6 +1411,52 @@ private struct TimelineList: View {
     /// Clears the flag on everything in the list, emptying it.
     private func dismissAllLateArrivals() {
         _ = try? ThresholdService.clearLateArrivals(for: scope, in: modelContext)
+        save()
+    }
+
+    /// The items the reader can see right now: the fold, and everything below it that fits on
+    /// screen.
+    private var visibleItems: ArraySlice<CachedItem> {
+        guard let rows = VisibleRows.clamped(foldHandle.visibleRows, count: items.count) else {
+            return []
+        }
+        return items[rows]
+    }
+
+    /// Whether anything on screen is still marked as an older item.
+    ///
+    /// Asked before the commit's debounce so a settle with nothing to do costs one look at the
+    /// geometry rather than a wait.
+    private var isShowingLateArrival: Bool {
+        guard !isLateArrivalList else { return false }
+        return visibleItems.contains(where: \.arrivedLate)
+    }
+
+    /// Takes the older-item mark off everything the reader can see.
+    ///
+    /// ## Why being on screen is enough
+    ///
+    /// Older Items exists so that an item which lands *below* the reading position is not simply
+    /// lost — chronological order would file it beneath where the reader has been and they would
+    /// never come across it. That is a statement about what is off screen. An item sitting a few
+    /// rows under the fold has not been missed, it is being looked at, and announcing it as an
+    /// older item is telling the reader they have missed something that is in front of them.
+    ///
+    /// So seeing an item is a dismissal of it, on the same terms as the Dismiss button and with
+    /// the same effect: the flag is this device's own and is never synced, so nothing is pushed.
+    ///
+    /// Not in the Older Items list itself, where the flag *is* the list. Scrolling through it
+    /// would empty it row by row under the reader, and a list that disappears as you read it
+    /// cannot be worked through. It has Dismiss and Dismiss All for that, which are decisions
+    /// rather than side effects.
+    private func clearSeenLateArrivals() {
+        guard !isLateArrivalList else { return }
+        let seen = visibleItems.filter(\.arrivedLate)
+        guard !seen.isEmpty else { return }
+
+        for item in seen {
+            item.arrivedLate = false
+        }
         save()
     }
 
@@ -1600,7 +1690,11 @@ private struct TimelineList: View {
     /// ever be wrong until the next scroll, and a wrong position is corrected simply by scrolling,
     /// none of the guards the previous high-water design needed apply here.
     private func commitPosition() async {
-        guard canCommitFold else { return }
+        // Two reasons to wait out a settle: a position worth writing, and rows on screen still
+        // marked as older items. The second is why this no longer returns on `canCommitFold`
+        // alone — a reader whose fold cannot be published, because it was restored or adopted, is
+        // still a reader looking at those rows.
+        guard canCommitFold || isShowingLateArrival else { return }
 
         // ## Why this waits in a loop rather than once
         //
@@ -1641,6 +1735,12 @@ private struct TimelineList: View {
             )
         }
 
+        // After the settle rather than before it, so the rows being read off the geometry are the
+        // ones standing still in front of the reader.
+        clearSeenLateArrivals()
+
+        // Guarded again inside, so a fold that only got here to clear the marks above writes
+        // nothing.
         await writePosition()
     }
 
