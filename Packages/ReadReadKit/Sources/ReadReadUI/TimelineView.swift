@@ -1550,7 +1550,29 @@ private struct TimelineList: View {
         // has just been told to move to.
         foldHandle.releaseAnchor()
         ScrollDiagnostics.shared.attribute("adopt → row \(row)")
+
+        // Two passes with a settle between, exactly as the restore does — and for a reason that
+        // only became true when adoption started waiting for the article it names.
+        //
+        // A report used to be applied the moment the *mark* arrived, which is a position-only
+        // change: the rows were already there and one `scrollTo` landed. Now the interesting case
+        // is a report that arrives ahead of its article, so it is applied when **ingest brings the
+        // rows in** — and a proxy scroll issued from inside the update that inserted them is
+        // exactly the call `holdScrollAnchor` documents as landing on nothing, because the backing
+        // table has not been handed the new rows yet. On top of that the rows have variable
+        // heights and are measured lazily, so a first pass computed from placeholder heights lands
+        // a row or two short.
+        //
+        // The anchor is released again before the second pass: another batch landing in between
+        // would arm a hold of its own, and a hold that outlives this scroll drags the reader back
+        // to where they were before they were told to move.
         proxy.scrollTo(item.id, anchor: .top)
+        try? await Task.sleep(for: Self.restoreSettleDelay)
+        foldHandle.releaseAnchor()
+        proxy.scrollTo(item.id, anchor: .top)
+        // Deliberately no cancellation check around the bookkeeping below. A cancelled task here
+        // means the list is going away, and returning early would leave the report recorded as
+        // applied — it is claimed before the scroll — with the fold never moved to match it.
 
         // Set from the stored count rather than measured back off the screen, for the same reason
         // the restore does it: `scrollTo` lands within a fraction of a point of the top edge and
