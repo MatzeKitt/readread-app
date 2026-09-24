@@ -381,6 +381,68 @@ private struct ForeignPosition: Equatable {
     /// position which could not be placed before can be placed now — which is why it is watched —
     /// and it is emphatically not the signal that another device reported something new.
     var local: SortKey
+
+    /// Whether this store actually holds the row ``local`` names.
+    ///
+    /// Not implied by the translation succeeding: a mark that could not be translated comes back
+    /// unchanged, which is indistinguishable from one that needed no translation. See
+    /// `ThresholdService.holdsItem(at:for:in:)`.
+    var isPlaceable: Bool
+}
+
+/// What to do with a position another device reported.
+///
+/// Its own type for the same reason as ``PositionPublication``: the rule cannot be exercised
+/// through the view — deciding it needs a laid-out list and a second device — and getting it wrong
+/// is not visible in a diff. This is the half that can be tested.
+enum PositionAdoption {
+
+    enum Decision: Equatable {
+
+        /// Move the list there, and remember the report so it is not applied a second time.
+        case scroll
+
+        /// The list is already where the report wants it. Remember it; scroll nothing.
+        case recordOnly
+
+        /// The report names an article this store does not have yet. Do nothing, and **do not
+        /// remember it**, so it is applied when ingest brings the article in.
+        case waitForItems
+
+        /// Already applied.
+        case ignore
+    }
+
+    /// - Parameters:
+    ///   - isAlreadyAdopted: Whether this exact report — as the other device wrote it — has been
+    ///     applied before.
+    ///   - isPlaceable: Whether the article the report names is in this store.
+    ///   - isFoldAtReport: Whether the fold is already sitting on the reported position.
+    static func decide(
+        isAlreadyAdopted: Bool,
+        isPlaceable: Bool,
+        isFoldAtReport: Bool
+    ) -> Decision {
+        // First, and on the *reported* key rather than the translated one. A report is applied
+        // once however often this store's answer about it moves, which is what stopped an ordinary
+        // refresh from scrolling the list out from under a reader who had moved on.
+        if isAlreadyAdopted { return .ignore }
+
+        // The case the whole retry exists for, and the one it used to miss.
+        //
+        // `itemAtPosition` finds the item at the marker by *offset*, so it answers for any
+        // non-empty scope — including when the marker is a key this store cannot place, which is
+        // exactly what a position arriving ahead of its article is. Acting on that put the reader
+        // at a row chosen by how two devices' account ids happened to sort, and recording it made
+        // the wrong answer permanent: when the article finally arrived and the mark became
+        // placeable, the report was refused as already applied.
+        //
+        // Waiting is the honest answer. The count still reflects the report meanwhile; only the
+        // scroll is deferred, and `ForeignPosition.local` changing is what brings it back.
+        guard isPlaceable else { return .waitForItems }
+
+        return isFoldAtReport ? .recordOnly : .scroll
+    }
 }
 
 /// Watches this scope's stored positions and reports one written by another device.
@@ -400,14 +462,33 @@ private struct ForeignPosition: Equatable {
 private struct TimelinePositionWatcher: View {
 
     let scope: ScopeID
+
+    /// How many items the list is showing, so this re-evaluates when ingest lands more.
+    ///
+    /// Not used in the body — its job is to be a dependency. A report that arrived ahead of its
+    /// article is deliberately left unrecorded so it can be applied when the article turns up, and
+    /// noticing that it has turned up means recomputing `isPlaceable`. The `@Query` below watches
+    /// *positions*, so on its own nothing here would re-run when items arrive.
+    ///
+    /// That used to be carried by the translation changing, which is a store lookup — but once
+    /// account ids are derived rather than minted, a foreign mark needs no translation, so `local`
+    /// reads the same before and after the article lands and the old signal goes quiet. This one
+    /// does not depend on the ids differing.
+    let itemCount: Int
+
     let adopt: @MainActor (ForeignPosition) async -> Void
 
     @Environment(\.modelContext) private var modelContext
 
     @Query private var marks: [PositionMark]
 
-    init(scope: ScopeID, adopt: @escaping @MainActor (ForeignPosition) async -> Void) {
+    init(
+        scope: ScopeID,
+        itemCount: Int,
+        adopt: @escaping @MainActor (ForeignPosition) async -> Void
+    ) {
         self.scope = scope
+        self.itemCount = itemCount
         self.adopt = adopt
         let raw = scope.rawValue
         _marks = Query(filter: #Predicate<PositionMark> { $0.scopeRaw == raw })
@@ -434,7 +515,11 @@ private struct TimelinePositionWatcher: View {
         // gives.
         let local = (try? ThresholdService.localisedMark(effective.markSortKey, in: modelContext))
             ?? effective.markSortKey
-        return ForeignPosition(reported: effective.markSortKey, local: local)
+        // Asked here, where the store is already being consulted, and carried on the report — so
+        // the decision below is made from facts rather than from a fetch that answers for any
+        // non-empty scope. See `PositionAdoption`.
+        let isPlaceable = (try? ThresholdService.holdsItem(at: local, for: scope, in: modelContext)) ?? false
+        return ForeignPosition(reported: effective.markSortKey, local: local, isPlaceable: isPlaceable)
     }
 
     var body: some View {
@@ -1122,7 +1207,7 @@ private struct TimelineList: View {
             // Drawn behind the list, like the fold sink, so observing position rows takes its
             // dependency there rather than in the list body.
             .background {
-                TimelinePositionWatcher(scope: scope) { position in
+                TimelinePositionWatcher(scope: scope, itemCount: items.count) { position in
                     await adoptRemotePosition(position, proxy: proxy)
                 }
             }
@@ -1424,31 +1509,36 @@ private struct TimelineList: View {
         // adopted — there is a real report here still waiting to be applied.
         guard hasRestored, isPositioned else { return }
 
-        // ## The jump this guard removes
+        // ## What each answer is for
         //
-        // A report is applied once. It used to be applied every time its *translation* changed,
-        // and that translation is a store lookup — so an ordinary refresh re-fired it with nothing
-        // having been reported by anybody. The reader, meanwhile, had scrolled on, so the early-out
-        // below no longer matched and the list was scrolled back: a couple of items, snapped to the
-        // top, mid-scroll, every refresh. Which is exactly what a `scrollTo(anchor: .top)` looks
-        // like, and it was one.
+        // A report is applied once, keyed on what the other device *wrote* rather than on what
+        // this store made of it. It used to be applied every time its translation changed, and
+        // that translation is a store lookup — so an ordinary refresh re-fired it with nothing
+        // having been reported by anybody. The reader, meanwhile, had scrolled on, so the list was
+        // scrolled back: a couple of items, snapped to the top, mid-scroll, every refresh.
         //
-        // Keyed on what the other device wrote rather than on what this store made of it, so the
-        // retry the translation exists to drive still works — a report that could not be placed is
-        // not recorded, and lands the moment its article arrives — while a report already acted on
-        // stays acted on.
-        guard adoptedForeignMark != position.reported else { return }
-
-        // Already where it wants to be — the common case, because this device's own pushes come
-        // back from the server under its own id and every scope it cascaded to reports the same key.
-        guard foldItem?.sortKey != position.local else {
+        // And a report whose article is not here yet is **left unrecorded**, so it lands the
+        // moment ingest brings the article in. That is the case this whole mechanism exists for,
+        // and the one it used to get wrong — see `PositionAdoption`.
+        switch PositionAdoption.decide(
+            isAlreadyAdopted: adoptedForeignMark == position.reported,
+            isPlaceable: position.isPlaceable,
+            // Already where it wants to be — the common case, because this device's own pushes
+            // come back from the server under its own id and every scope it cascaded to reports
+            // the same key.
+            isFoldAtReport: foldItem?.sortKey == position.local
+        ) {
+        case .ignore, .waitForItems:
+            return
+        case .recordOnly:
             adoptedForeignMark = position.reported
             return
+        case .scroll:
+            break
         }
 
-        // Left unrecorded when the position cannot be placed, so the next arrival of items retries
-        // it. This is the case the translation is watched for: a device whose first sync brought a
-        // position in before the article it names.
+        // Placeable, so these answer about the article the report actually names rather than about
+        // whichever row an offset happened to land on.
         guard
             let item = try? ThresholdService.itemAtPosition(for: scope, in: modelContext),
             let row = try? ThresholdService.newerCount(for: scope, in: modelContext)

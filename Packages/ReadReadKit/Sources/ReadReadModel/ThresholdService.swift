@@ -392,6 +392,38 @@ public enum ThresholdService {
         return try context.fetch(descriptor).first
     }
 
+    /// Whether this store holds the row a mark names.
+    ///
+    /// The question ``itemAtPosition(for:in:)`` cannot answer. That one finds the item at the
+    /// marker *by offset* — the newest item at or below it — so it returns something for any
+    /// non-empty scope, including when the marker is a key from another device's id space that
+    /// this store has no way to compare meaningfully. "There is an item there" and "the item the
+    /// mark names is here" are different facts, and only this one distinguishes a position that
+    /// can be acted on from one whose article has not arrived yet.
+    ///
+    /// Asked with the mark already localised — see ``localisedMark(_:in:)`` — so a foreign mark
+    /// naming an article this store *does* have reads as placeable.
+    ///
+    /// A `fetchCount` against the `sortKeyRaw` index, so it costs a seek rather than a scan.
+    public static func holdsItem(at mark: SortKey, for scope: ScopeID, in context: ModelContext) throws -> Bool {
+        let raw = mark.rawValue
+        // A sentinel names no item. `.distantPast` in particular is every unread scope's marker,
+        // and reading it as "placeable" would make an unread scope look like a report to act on.
+        guard !raw.isEmpty, mark != .distantFuture else { return false }
+
+        // Read Later orders its own rows and its entries outlive the items they were taken from,
+        // so asking `CachedItem` there would call every saved article unplaceable the moment
+        // retention pruned it. Same split as `newerCount(for:in:)`.
+        if case .readLater = scope {
+            return try context.fetchCount(
+                FetchDescriptor<ReadLaterEntry>(predicate: #Predicate { $0.sortKeyRaw == raw })
+            ) > 0
+        }
+        return try context.fetchCount(
+            FetchDescriptor<CachedItem>(predicate: #Predicate { $0.sortKeyRaw == raw })
+        ) > 0
+    }
+
     /// Clears the late-arrival flag across a scope, dismissing the "older items arrived" notice.
     ///
     /// - Returns: How many items were cleared.
