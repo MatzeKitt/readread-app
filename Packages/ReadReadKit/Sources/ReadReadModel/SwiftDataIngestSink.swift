@@ -104,7 +104,32 @@ public actor SwiftDataIngestSink: IngestSink {
         //
         // `highestSeenID` is empty until a run completes, which is exactly the condition wanted —
         // it is the same flag that tells the walk it has no stop line yet.
-        let isFirstWalk = try cursor(accountID: accountID, streamKey: streamKey).highestSeenID.isEmpty
+        //
+        // Read once, before the walk's state is written back into it at the end of this method:
+        // both questions asked of it are about the walk this page belongs to, and
+        // `isWalkInProgress` is set below.
+        let cursor = try cursor(accountID: accountID, streamKey: streamKey)
+        let isFirstWalk = cursor.highestSeenID.isEmpty
+
+        // Only the *first* page of a walk can bring a late arrival.
+        //
+        // The same reasoning as `isFirstWalk` one step further out, and the case it covers is the
+        // one that turned Older Items into a list of thousands after a few days away. A walk
+        // fetches the newest items first and stops at the first id it already knows; when it
+        // cannot reach that id within a page, it pages *downwards* through the backlog over the
+        // following refreshes. Every one of those pages is history — items the device simply had
+        // not fetched yet — and every one of them lands below the marker, because the marker is at
+        // the top of what the reader has already been shown.
+        //
+        // `isWalkInProgress` is what the planners read to decide whether to resume from a
+        // continuation, so it is exactly "this page is a continuation" — false on the first page of
+        // a walk, because `completeRun` clears it, and true from the second page on.
+        //
+        // What this gives up: a genuine late arrival that turns up in the same refresh as a
+        // backlog page is no longer flagged. That is the right side to err on — one unflagged item
+        // sitting in its place in the timeline against a list of a week's history, announced as
+        // though it had all arrived late.
+        let isBacklogPage = cursor.isWalkInProgress
 
         if !items.isEmpty {
             // Markers are looked up once per page rather than once per item: the global marker is
@@ -131,6 +156,7 @@ public actor SwiftDataIngestSink: IngestSink {
                 // test below is about *whose* position this item slipped under.
                 let threshold = global.markSortKey >= source.markSortKey ? global : source
                 let arrivedLate = !isFirstWalk
+                    && !isBacklogPage
                     && isThisDevices(threshold)
                     && item.sortKey <= threshold.markSortKey
                 if arrivedLate { lateArrivals += 1 }
@@ -139,7 +165,6 @@ public actor SwiftDataIngestSink: IngestSink {
             }
         }
 
-        let cursor = try cursor(accountID: accountID, streamKey: streamKey)
         cursor.resumeContinuation = resumeContinuation
         cursor.pendingHighestSeenID = pendingHighestSeenID
         cursor.isWalkInProgress = true

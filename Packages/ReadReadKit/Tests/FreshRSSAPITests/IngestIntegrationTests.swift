@@ -717,6 +717,57 @@ struct BackfillLateArrivalTests {
         #expect(flagged == 0)
     }
 
+    /// The same trap as the initial backfill, sprung by a few days away from the app rather than
+    /// by a new account: the walk cannot reach its stop line in one page, so it pages down through
+    /// the gap over the refreshes that follow. Those pages are history the device had not fetched
+    /// yet, and calling them late arrivals announced a week of reading as "older items".
+    @Test("A walk paging down into the gap after a break flags nothing")
+    func catchingUpIsNotLate() async throws {
+        let (sink, container) = try makeSink()
+        await sink.configure(deviceID: deviceID)
+
+        // A settled device: one walk finished, and the reader is sitting at the top of it.
+        _ = try await sink.commit(
+            items: page(90..<100, base: 1_700_000_000_000),
+            accountID: accountID,
+            streamKey: "reading-list",
+            resumeContinuation: "",
+            pendingHighestSeenID: "99"
+        )
+        try await sink.completeRun(accountID: accountID, streamKey: "reading-list", highestSeenID: "99")
+
+        let context = ModelContext(container)
+        let newest = try #require(try ThresholdService.newestItem(for: .all, in: context))
+        try ThresholdService.setPosition(.all, to: newest.sortKey, deviceID: deviceID, in: context)
+        try context.save()
+
+        // Days later. The first page of the new walk carries the newest items, which sit above the
+        // marker; it does not reach the stop line, so the walk goes on.
+        _ = try await sink.commit(
+            items: page(100..<110, base: 1_700_000_000_000),
+            accountID: accountID,
+            streamKey: "reading-list",
+            resumeContinuation: "c1",
+            pendingHighestSeenID: "109"
+        )
+
+        // The continuation: the middle of the gap, every item of it below where the reader
+        // stopped. Ten of these were flagged before, all of them for having been fetched late
+        // rather than for having arrived late.
+        _ = try await sink.commit(
+            items: page(80..<90, base: 1_700_000_000_000),
+            accountID: accountID,
+            streamKey: "reading-list",
+            resumeContinuation: "c2",
+            pendingHighestSeenID: "109"
+        )
+
+        let flagged = try ModelContext(container).fetchCount(
+            FetchDescriptor<CachedItem>(predicate: #Predicate { $0.arrivedLate })
+        )
+        #expect(flagged == 0)
+    }
+
     @Test("Once the first walk has completed, a genuinely back-dated item is still flagged")
     func lateArrivalsStillWorkAfterwards() async throws {
         let (sink, container) = try makeSink()
