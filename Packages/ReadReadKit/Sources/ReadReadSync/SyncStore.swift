@@ -387,8 +387,15 @@ public actor SyncStore {
 
         // Otherwise genuinely new here — an account added on another device. It arrives with no
         // credential, so the user signs in to it on this device before it can fetch anything.
+        //
+        // Stored under the id *derived* from what arrived, not the id it arrived under. Those are
+        // the same thing once the sending device has migrated, and while one has not, taking its
+        // random id would spread that id here and make this device's sources, items and scopes
+        // disagree with every migrated device's. Deriving locally means the two converge without
+        // either waiting for the other. The record keeps its own id on the server; the next pull
+        // of it finds no row under that id, matches on identity instead, and skips.
         modelContext.insert(AccountRecord(
-            id: id,
+            id: identity.accountID,
             kind: AccountKind(rawValue: payload.kind) ?? .freshRSS,
             displayName: payload.displayName,
             serverURLString: payload.serverURLString,

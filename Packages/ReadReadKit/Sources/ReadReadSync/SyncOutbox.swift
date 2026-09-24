@@ -34,6 +34,21 @@ public enum SyncOutbox {
         )
     }
 
+    /// Queues the removal of a position record this device owns.
+    ///
+    /// The only caller is ``AccountIDMigration``, and the distinction it relies on is that a
+    /// position record is matched by **id alone** on the receiving side — unlike an account, whose
+    /// tombstone is matched by identity and would therefore delete the account everywhere. The key
+    /// here names one scope on one device, so deleting it can only ever remove the row this device
+    /// has just rewritten, and it clears the copies other devices pulled of a scope id that no
+    /// longer exists anywhere.
+    ///
+    /// Takes the key rather than the row, because by the time this is called the row is carrying
+    /// its *new* key and the old one is only known to the caller.
+    public static func recordPositionDeletion(key: String, in context: ModelContext) throws {
+        try enqueueDeletion(collection: .position, recordID: key, in: context)
+    }
+
     // MARK: - Read Later
 
     public static func record(_ entry: ReadLaterEntry, in context: ModelContext) throws {

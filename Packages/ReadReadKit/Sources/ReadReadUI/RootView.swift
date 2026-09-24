@@ -218,12 +218,35 @@ public struct RootView: View {
                 in: modelContext
             )
 
+            let container = modelContext.container
+
+            // Before the deduplication below, and before anything reads a position: account ids
+            // used to be minted per device, so the same feed, article and scope were named
+            // differently everywhere and no per-feed position could ever sync. This gives them the
+            // ids every device derives, and rewrites what is already stored to match.
+            //
+            // Off the main actor, because it moves each account's Keychain item — and a
+            // synchronous Keychain call on the main actor can stop dead behind a SecurityAgent
+            // prompt, taking the window with it.
+            let deviceID = DeviceIdentity.current.id
+            let accountIDs = try? await Task.detached {
+                try AccountIDMigration.run(deviceID: deviceID, in: ModelContext(container))
+            }.value
+
+            // The one account id the store cannot reach. `badgeScope` is a `ScopeID` kept in the
+            // preferences, so a reader whose badge counts one feed would otherwise be left
+            // counting a scope that no longer exists — a badge stuck at zero with nothing to say
+            // why.
+            if let mapping = accountIDs?.accounts, !mapping.isEmpty,
+               let rescoped = AccountIDMigration.rewrite(scope: settings.refresh.badgeScope, using: mapping) {
+                settings.refresh.badgeScope = rescoped
+            }
+
             // A second, credential-less copy of an account arrives by sync and then fails every
             // refresh — which used to drag every healthy account into the retry backoff with it.
             // Local only: pushing these deletions would remove the other device's working copy.
             // Off the main actor: it reads the Keychain per account, and a synchronous Keychain
             // read on the main actor can stop dead behind a SecurityAgent prompt.
-            let container = modelContext.container
             _ = try? await Task.detached {
                 try AccountDeduplication.removeUnusableDuplicates(in: ModelContext(container))
             }.value

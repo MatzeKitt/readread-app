@@ -177,6 +177,8 @@ struct MastodonSignInView: View {
         }
 
         let account = AccountRecord(
+            // Derived from the identity rather than minted — see `AccountIdentity.accountID`.
+            id: identity.accountID,
             kind: .mastodon,
             displayName: displayName,
             serverURLString: result.instanceURL.absoluteString,

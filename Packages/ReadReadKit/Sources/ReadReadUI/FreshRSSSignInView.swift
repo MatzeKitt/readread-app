@@ -155,6 +155,10 @@ struct FreshRSSSignInView: View {
         let existing = reconnecting ?? AccountIdentity.account(matching: identity, in: accounts)
 
         let account = existing ?? AccountRecord(
+            // Derived from the identity rather than minted, so this device and every other one
+            // name the account — and therefore its feeds, its items and its scopes — identically.
+            // See `AccountIdentity.accountID`.
+            id: identity.accountID,
             kind: .freshRSS,
             displayName: name,
             serverURLString: url.absoluteString,
