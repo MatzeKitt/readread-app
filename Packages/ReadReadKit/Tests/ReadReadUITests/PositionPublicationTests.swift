@@ -25,14 +25,16 @@ struct PositionPublicationTests {
         stored: SortKey?,
         isRestoredFold: Bool,
         foldScope: ScopeID? = .all,
-        writingScope: ScopeID = .all
+        writingScope: ScopeID = .all,
+        arePositionsMerged: Bool = true
     ) -> Bool {
         PositionPublication.shouldPublish(
             fold: fold,
             stored: stored,
             isRestoredFold: isRestoredFold,
             foldScope: foldScope,
-            writingScope: writingScope
+            writingScope: writingScope,
+            arePositionsMerged: arePositionsMerged
         )
     }
 
@@ -176,6 +178,56 @@ struct PositionPublicationTests {
                 isRestoredFold: false,
                 foldScope: nil,
                 writingScope: .all
+            )
+        )
+    }
+
+    // MARK: - Not before this device has heard from the others
+
+    /// The launch race, in the rule's own terms.
+    ///
+    /// Every other rule here would wave this through — the reader moved, in the right list, to a
+    /// row that differs from what is stored. What makes it wrong is *when*: the store has not yet
+    /// been told where the device that was actually used last left off, so this fold is a move
+    /// away from a stale place, and publishing it re-dates that staleness into the newest word in
+    /// the system.
+    @Test("Nothing is published before this session has pulled")
+    func foldIsNotPublishedBeforeTheMerge() {
+        #expect(
+            !shouldPublish(
+                fold: key(900),
+                stored: key(1_000),
+                isRestoredFold: false,
+                arePositionsMerged: false
+            )
+        )
+    }
+
+    /// The suppression is a delay, not a veto: the same fold is publishable the moment the pull
+    /// has been heard from. `TimelineFoldSink` keys its commit on the gate so this actually gets
+    /// asked again rather than waiting for the reader to scroll once more.
+    @Test("The same fold is published once the merge has happened")
+    func foldIsPublishedAfterTheMerge() {
+        #expect(
+            shouldPublish(
+                fold: key(900),
+                stored: key(1_000),
+                isRestoredFold: false,
+                arePositionsMerged: true
+            )
+        )
+    }
+
+    /// The gate does not rescue a fold the other rules refuse. Opening it lets the question be
+    /// asked; it does not answer it.
+    @Test("The merge does not make a restored fold publishable")
+    func mergeDoesNotOverrideTheRestoreRule() {
+        #expect(
+            !shouldPublish(
+                fold: key(1_000),
+                stored: key(1_000),
+                isRestoredFold: true,
+                arePositionsMerged: true
             )
         )
     }

@@ -15,6 +15,14 @@ import UIKit
 private struct CommitKey: Equatable {
     var isReady: Bool
     var foldItemID: String?
+
+    /// Part of the key so that the gate opening re-runs the commit.
+    ///
+    /// Without it, a reader who scrolled while this device had not yet heard from the others would
+    /// have that fold refused once and never reconsidered — the fold has not changed since, so
+    /// nothing else would ever ask again, and the position would go unrecorded until the next
+    /// scroll. See ``PositionPublication``.
+    var arePositionsMerged: Bool
 }
 
 /// Where the reader currently is in a scope's list.
@@ -235,13 +243,30 @@ enum PositionPublication {
     ///   - isRestoredFold: Whether this fold is the one the restore put there, untouched since.
     ///   - foldScope: The list the fold was measured in, or `nil` when it has never been read.
     ///   - writingScope: The list whose position is about to be written.
+    ///   - arePositionsMerged: Whether this session has pulled the other devices' positions yet.
     static func shouldPublish(
         fold: SortKey,
         stored: SortKey?,
         isRestoredFold: Bool,
         foldScope: ScopeID?,
-        writingScope: ScopeID
+        writingScope: ScopeID,
+        arePositionsMerged: Bool
     ) -> Bool {
+        // Nothing may be claimed before this device knows what it is claiming against.
+        //
+        // The other rules here all describe a position the app *derived* — restored, adopted,
+        // seeded — and refuse to let it masquerade as a report. This one is about the reader, and
+        // it is the case none of the others covered: a scroll is a genuine report, but a scroll
+        // away from a *stale restore* is a report about a place the reader was put by a store that
+        // had not yet heard from the device they were actually reading on. Published, it wins the
+        // reduction on its timestamp and the other device adopts it back.
+        //
+        // Deliberately the first check, before even the scope test: until the gate opens there is
+        // no question worth asking. `AppServices.arePositionsMerged` bounds the wait, so this
+        // suppresses a report for seconds at most, and `TimelineFoldSink` re-runs the commit when
+        // it opens — so the fold the reader established meanwhile is written then rather than lost.
+        guard arePositionsMerged else { return false }
+
         // A fold measured in one list and about to be written down as another list's position.
         //
         // First, because it is the only one of these rules that is not about *whether* the reader
@@ -289,6 +314,11 @@ private struct TimelineFoldSink: View {
     let isReady: Bool
     let commit: @MainActor () async -> Void
 
+    /// Read *here* rather than by the list, which is the whole reason this view exists. The gate
+    /// changes once or twice a session, but taking the dependency in the list's body would drag
+    /// the timeline through a rebuild for it — the same reasoning as the fold itself.
+    @Environment(AppServices.self) private var services
+
     var body: some View {
         Color.clear
             // `.task(id:)` *is* the debounce: a new fold cancels the pending sleep, so the write
@@ -298,7 +328,11 @@ private struct TimelineFoldSink: View {
             // *before* it marks itself finished, so keying on the fold alone meant the task had
             // already run and bailed by then, and never ran again — the position was never written
             // at all until the reader happened to scroll.
-            .task(id: CommitKey(isReady: isReady, foldItemID: fold.itemID)) {
+            .task(id: CommitKey(
+                isReady: isReady,
+                foldItemID: fold.itemID,
+                arePositionsMerged: services.arePositionsMerged
+            )) {
                 await commit()
             }
             // Both platforms: this was macOS-only because `navigationSubtitle` used to be, and
@@ -1253,7 +1287,24 @@ private struct TimelineList: View {
     /// Opening at the position rather than at the top is what makes the position worth syncing:
     /// you pick up a second device where you left the first, and the newer items sit above the
     /// fold with the count saying how many.
+    ///
+    /// ## Why it waits before reading the store
+    ///
+    /// "Where was I" is a question about every device, so it cannot be answered from a store that
+    /// has not heard from them yet. Restoring first and correcting afterwards is what the app used
+    /// to do — the list opened at yesterday's place and `adoptRemotePosition` moved it once the
+    /// pull landed — and it put the reader somewhere wrong for as long as the pull took, which is
+    /// exactly the window in which their first scroll overwrote the position they were about to be
+    /// given. Waiting is bounded by `AppServices.positionMergeTimeout`, and the gate opens on a
+    /// failed or unconfigured sync as readily as on a successful one, so an offline device still
+    /// opens where it left off.
     private func restorePosition(_ proxy: ScrollViewProxy) async {
+        // Before anything is read, including the early-outs below: `hasRestored` is what releases
+        // adoption, and setting it from a pre-merge reading would let the rest of the view act on
+        // a position this device is still in the middle of being corrected about.
+        await services.waitForPositionMerge()
+        guard !Task.isCancelled else { return }
+
         // Whether the fold has to be measured at the end, or is already known.
         var restoredRow: Int?
 
@@ -1500,7 +1551,11 @@ private struct TimelineList: View {
             stored: (try? ThresholdService.effectivePosition(for: scope, in: modelContext))?.markSortKey,
             isRestoredFold: itemID == fold.restoredItemID,
             foldScope: fold.scope,
-            writingScope: scope
+            writingScope: scope,
+            // Read here rather than taken as a view dependency: this runs from the debounce and
+            // from the flush, neither of which is a body evaluation, so nothing is invalidated by
+            // asking. `TimelineFoldSink` is what notices the gate opening.
+            arePositionsMerged: services.arePositionsMerged
         )
     }
 

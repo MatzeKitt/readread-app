@@ -50,6 +50,49 @@ public final class AppServices {
 
     public var isRefreshing: Bool { !refreshingKinds.isEmpty }
 
+    /// Whether this session has heard what the *other* devices think the reading position is.
+    ///
+    /// ## The race this closes
+    ///
+    /// Opening a scope reads the position straight out of the local store, and the launch pull is
+    /// still in flight while it does. So a device that has not been used for a day restores to its
+    /// own stale position — the reader is looking at a place they left yesterday — and the first
+    /// settled scroll from there is written with a fresh timestamp. `EffectivePosition.reduce`
+    /// takes the most recent row, so that scroll outranks the position arriving seconds later from
+    /// the device that was actually used in between, and the other device then adopts it back.
+    ///
+    /// Every other guard in this area — the restore's, the adoption's, the seeding gate — covers a
+    /// position the *app* derived. None of them covered the reader, because nothing knew whether
+    /// this device had heard from the others yet. This is that missing fact.
+    ///
+    /// While it is `false`, the timeline neither opens at a position nor publishes one; both resume
+    /// the moment it flips. It is deliberately not a promise that the pull *succeeded* — see
+    /// ``armPositionMerge()`` for why it has to open either way.
+    public private(set) var arePositionsMerged = false
+
+    /// The longest the timeline will wait for the pull before carrying on without it.
+    ///
+    /// A bound rather than a guess at how long a sync takes. Offline, signed out, or pointed at a
+    /// server that has gone away, the pull never completes — and a device that never restores and
+    /// never records a position is far worse than one that occasionally reports without having
+    /// heard. Long enough to cover an ordinary round trip on a slow connection, short enough not to
+    /// read as the app having hung on launch.
+    private static let positionMergeTimeout = Duration.seconds(4)
+
+    /// When the last pull of this session finished, so a brief absence does not re-close the gate.
+    ///
+    /// The Mac posts an occlusion change whenever the window is covered and uncovered, which during
+    /// ordinary use is often. Re-arming on each of those would suppress publication for a few
+    /// seconds at a time all day, for a device whose knowledge of the other's position is seconds
+    /// old. See ``armPositionMerge()``.
+    @ObservationIgnored private var lastPositionMergeAt: Date?
+
+    /// Waiters parked in ``waitForPositionMerge()``. Resumed together, exactly once.
+    @ObservationIgnored private var positionMergeWaiters: [CheckedContinuation<Void, Never>] = []
+
+    /// Opens the gate when the pull takes too long. Cancelled when the pull gets there first.
+    @ObservationIgnored private var positionMergeTimer: Task<Void, Never>?
+
     @ObservationIgnored public let container: ModelContainer
     @ObservationIgnored public let endpoint: SyncEndpoint
 
@@ -109,6 +152,10 @@ public final class AppServices {
         guard !hasStarted else { return }
         hasStarted = true
 
+        // Before the engine is configured, and well before the coordinator's first run: arming
+        // after the pull could complete is the same race in miniature.
+        armPositionMerge()
+
         await configureEngine()
 
         // Settings are edited on the main actor and consumed by an actor, so the bridge is a
@@ -164,6 +211,11 @@ public final class AppServices {
                     refreshingKinds.insert(kind)
                 } else {
                     refreshingKinds.remove(kind)
+                    // A finished sync run is what "this device has heard from the others" means.
+                    // Taken on the way out whatever the outcome, because the engine reports the end
+                    // of a run that threw exactly as it reports one that worked — and a device that
+                    // cannot reach the server must still be able to read. See `arePositionsMerged`.
+                    if kind == .syncState { markPositionsMerged() }
                 }
             }
         }
@@ -173,6 +225,74 @@ public final class AppServices {
             }
         }
         await engine.reloadSyncConfiguration()
+    }
+
+    // MARK: - Knowing where the other devices are
+
+    /// Closes the position gate until this session has pulled, or has given up trying.
+    ///
+    /// Called on launch and when the app is activated after being away. Activation counts because
+    /// the harm is not specific to a cold start: a phone that has been in a pocket while the Mac
+    /// was read comes back holding a position that is just as stale as a launch's, and the reader's
+    /// first scroll from it is just as authoritative.
+    ///
+    /// A recent merge is left alone, which is what keeps this from being a nuisance on the Mac:
+    /// `didChangeOcclusionState` fires whenever the window is covered or uncovered, and re-closing
+    /// the gate for a device whose knowledge is seconds old would suppress real reports all day to
+    /// re-answer a question already answered. The window used is the sync interval itself — inside
+    /// it, another pull would tell this device nothing it was not about to be told anyway.
+    func armPositionMerge() {
+        if let lastPositionMergeAt,
+           let interval = settings.refresh.interval(for: .syncState, isLowPower: false),
+           Date.now.timeIntervalSince(lastPositionMergeAt) < TimeInterval(interval.components.seconds) {
+            return
+        }
+
+        // Nothing is going to run, so nothing is going to open this. `refreshAll` only runs the
+        // kinds that are switched on, and a reader who has turned position sync off must not be
+        // left unable to record a position at all.
+        guard settings.refresh.isEnabled(.syncState) else {
+            markPositionsMerged()
+            return
+        }
+
+        arePositionsMerged = false
+        positionMergeTimer?.cancel()
+        positionMergeTimer = Task { [weak self] in
+            try? await Task.sleep(for: Self.positionMergeTimeout)
+            guard !Task.isCancelled else { return }
+            self?.markPositionsMerged()
+        }
+    }
+
+    /// Opens the gate and releases whoever is waiting on it.
+    ///
+    /// Idempotent: the timeout and the pull race each other by design, and both call this.
+    private func markPositionsMerged() {
+        positionMergeTimer?.cancel()
+        positionMergeTimer = nil
+        lastPositionMergeAt = .now
+
+        // Resumed before the flag is read by anyone else, and cleared first so a waiter that parks
+        // itself again from inside its own continuation cannot be resumed twice.
+        let waiters = positionMergeWaiters
+        positionMergeWaiters = []
+        for waiter in waiters { waiter.resume() }
+
+        guard !arePositionsMerged else { return }
+        arePositionsMerged = true
+    }
+
+    /// Waits until this session has heard the other devices' positions.
+    ///
+    /// Returns immediately once the gate is open, so the timeline's retries do not each pay for it.
+    /// There is no cancellation handling because there is no case where this waits for ever:
+    /// ``armPositionMerge()`` always schedules the timeout that opens it.
+    public func waitForPositionMerge() async {
+        guard !arePositionsMerged else { return }
+        await withCheckedContinuation { continuation in
+            positionMergeWaiters.append(continuation)
+        }
     }
 
     /// Runs one refresh on behalf of a `BGAppRefreshTask`, and queues the next one.
@@ -221,6 +341,18 @@ public final class AppServices {
     public func stop() async {
         lifecycleTail?.cancel()
         lifecycleTail = nil
+
+        // Nothing is going to pull once this has stopped, so anyone parked in
+        // `waitForPositionMerge()` would be parked for ever. Released rather than resolved: the
+        // state is put back the way `start()` expects to find it, so a restart re-arms the gate
+        // instead of inheriting a merge that never happened.
+        positionMergeTimer?.cancel()
+        positionMergeTimer = nil
+        lastPositionMergeAt = nil
+        arePositionsMerged = false
+        let waiters = positionMergeWaiters
+        positionMergeWaiters = []
+        for waiter in waiters { waiter.resume() }
         await coordinator.stop()
         await reachability.stop()
         for observer in lifecycleObservers {
@@ -559,6 +691,10 @@ public final class AppServices {
             guard let self else { return }
             let isVisible = NSApp.occlusionState.contains(.visible)
             let pauseWhenHidden = settings.refresh.pauseWhenHidden
+            // A window coming back after a long time hidden is an activation, and the position
+            // behind it is as stale as a launch's. Declines to re-close the gate after a short
+            // absence — see `armPositionMerge()`.
+            if isVisible { armPositionMerge() }
             enqueueLifecycle { [coordinator] in
                 if isVisible {
                     await coordinator.resume(trigger: .activated)
@@ -610,6 +746,9 @@ public final class AppServices {
         // server log showed: one request from the phone against dozens from the Mac.
         add(UIApplication.didBecomeActiveNotification) { [weak self] in
             guard let self else { return }
+            // The phone is the device this matters most on: the process is suspended while the
+            // other device is read, so what is on screen when it comes back can be a day old.
+            armPositionMerge()
             enqueueLifecycle { [coordinator] in
                 // `resume` rather than `refreshAll`: it restarts the timers *and* runs whatever was
                 // missed, so the phone catches up on the way in rather than on the next tick.
