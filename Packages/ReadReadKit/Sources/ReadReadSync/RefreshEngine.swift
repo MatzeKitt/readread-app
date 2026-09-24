@@ -87,7 +87,7 @@ public actor RefreshEngine {
 
     /// How many item-fetching runs are in flight.
     ///
-    /// Read only by ``publishBadgeForPositionChange()``, to stay out of the way while a walk is
+    /// Read only by ``republishBadge()``, to stay out of the way while a walk is
     /// landing pages: mid-run the store holds part of an item set, which is the one thing the
     /// badge's gate exists to keep off the icon. The run publishes for itself when it finishes,
     /// so skipping here loses nothing.
@@ -188,6 +188,12 @@ public actor RefreshEngine {
     ///   nothing else, so the filter appeared in the other device's list and hid nothing.
     /// - An **account** switched off elsewhere arrives with no toggle to run, so its items keep
     ///   their `isAccountEnabled` flag and stay in the timeline.
+    /// - The **badge** is a function of the item set and the reading position, and a pull can move
+    ///   either. Nothing here published it, and the only other things that do are a completed feed
+    ///   refresh and the reader's own settled scroll — so a position arriving from the other
+    ///   device changed the sidebar counts, which watch the store, while the icon kept a number
+    ///   from up to fifteen minutes ago. A badge that contradicts the app it is attached to is
+    ///   worse than no badge.
     private func applyPulledSideEffects(_ outcome: SyncOutcome) async throws {
         if outcome.changedCollections.contains(.filter) {
             let reevaluator = FilterReevaluator(modelContainer: container)
@@ -197,6 +203,18 @@ public actor RefreshEngine {
         if outcome.changedCollections.contains(.account) {
             let context = ModelContext(container)
             _ = try? ThresholdService.reconcileAccountVisibility(in: context)
+        }
+
+        // Last, so the count is taken from rows the two passes above have already corrected —
+        // otherwise a pull that hid items would publish the number from before they were hidden.
+        //
+        // Keyed on the pull having changed *anything* rather than on the position collection
+        // alone. Every collection that syncs can move this number: a position moves the marker, a
+        // Read Later entry moves the count of the scope the badge may be set to, and a filter or a
+        // switched-off account moves the item set through the two passes above. A run that applied
+        // nothing — the overwhelmingly common one — does nothing here.
+        if !outcome.changedCollections.isEmpty {
+            await republishBadge()
         }
     }
 
@@ -382,11 +400,19 @@ public actor RefreshEngine {
         }
     }
 
-    /// Re-publishes the badge after the reader's position settled.
+    /// Re-publishes the badge after something moved the count without items arriving.
     ///
-    /// Called from the debounced fold commit, so it runs at most once per settled scroll rather
-    /// than per scroll event. See ``BadgePublisher/publishPositionChange(count:)``.
-    public func publishBadgeForPositionChange() async {
+    /// Two callers, and they are the same event seen from either end. The reader's own settled
+    /// fold, via the debounced commit, so it runs at most once per settled scroll rather than per
+    /// scroll event. And a **pull that changed something** — most often the same reader's fold,
+    /// reported by the device they were reading on. See ``applyPulledSideEffects(_:)``.
+    ///
+    /// Bypassing the badge's consistency gate is right here rather than merely convenient: the
+    /// gate exists because half an ingest is a partial *item set*, and neither of these callers
+    /// produces one. The item set is whatever the last completed cycle established; both of them
+    /// replace only the other half of the snapshot — the marker — with a newer one. See
+    /// ``BadgePublisher/publishPositionChange(count:)``.
+    public func republishBadge() async {
         guard ingestsInFlight == 0 else { return }
 
         let context = ModelContext(container)

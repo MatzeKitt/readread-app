@@ -376,7 +376,7 @@ public final class AppServices {
     /// Fire-and-forget from the caller's point of view: the timeline commits its fold on a
     /// debounce and must not wait on an actor hop to finish drawing.
     public func positionSettled() {
-        Task { [engine] in await engine.publishBadgeForPositionChange() }
+        Task { [engine] in await engine.republishBadge() }
         syncSoon()
     }
 

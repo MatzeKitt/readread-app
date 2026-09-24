@@ -343,7 +343,7 @@ struct RefreshEngineBadgeTests {
         )
         try verify.save()
 
-        await engine.publishBadgeForPositionChange()
+        await engine.republishBadge()
 
         #expect(await recorder.writes == [0, 3])
     }
