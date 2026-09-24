@@ -246,6 +246,54 @@ struct IngestIntegrationTests {
         #expect(try items(in: container).last?.title == "Added behind the fold")
     }
 
+    /// Catching up with another device is not the same as being late.
+    ///
+    /// Scroll to the top on the Mac and its marker jumps to the newest article it holds. The phone
+    /// pulls that position and then, on its next walk, fetches the very articles the Mac read past
+    /// — every one of them below the marker. Flagged, the phone announced a pile of "older items"
+    /// for a backlog the reader had just finished on the other device. Nothing arrived late; one
+    /// device was behind the other.
+    @Test("Items landing under another device's marker are not flagged late")
+    func arrivalsUnderAForeignMarkerAreNotFlagged() async throws {
+        let (sink, container) = try makeSink()
+        await sink.configure(deviceID: deviceID)
+
+        let firstTransport = StubTransport([.text(loginBody), page(startID: 1_000, count: 3, continuation: nil)])
+        _ = try await makePlanner(firstTransport, sink: sink).ingest()
+
+        // The other device read to the top and said so. Identical to the marker in the test above
+        // in every respect but who wrote it.
+        let context = ModelContext(container)
+        let newest = try items(in: container).first!
+        try ThresholdService.setPosition(.all, to: newest.sortKey, deviceID: "the-mac", in: context)
+        try context.save()
+        #expect(try ThresholdService.newerCount(for: .all, in: context) == 0)
+
+        let lateTransport = StubTransport([
+            .text(loginBody),
+            .json("""
+            { "items": [{
+                "id": "tag:google.com,2005:reader/item/00000000000007d0",
+                "crawlTimeMsec": "1700000000500",
+                "published": 1700000000,
+                "title": "Read past on the other device",
+                "origin": { "streamId": "feed/1" },
+                "summary": { "content": "<p>Old.</p>" }
+            }] }
+            """),
+        ])
+        let outcome = try await makePlanner(lateTransport, sink: sink).ingest()
+
+        #expect(outcome.lateArrivals == 0)
+
+        let verify = ModelContext(container)
+        // Still stored, still below the marker, still not counted as newer — it simply is not
+        // announced as something that arrived late.
+        #expect(try ThresholdService.lateArrivalCount(for: .all, in: verify) == 0)
+        #expect(try ThresholdService.newerCount(for: .all, in: verify) == 0)
+        #expect(try items(in: container).last?.title == "Read past on the other device")
+    }
+
     @Test("An item arriving above the marker is not flagged late")
     func normalArrivalIsNotFlagged() async throws {
         let (sink, container) = try makeSink()

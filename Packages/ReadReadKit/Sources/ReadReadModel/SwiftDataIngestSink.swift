@@ -110,24 +110,29 @@ public actor SwiftDataIngestSink: IngestSink {
             // Markers are looked up once per page rather than once per item: the global marker is
             // one query and each distinct source is one more, so a hundred-item page costs a
             // handful of fetches instead of two hundred.
-            let globalMark = try ThresholdService.effectivePosition(for: .all, in: modelContext).markSortKey
-            var sourceMarks: [String: SortKey] = [:]
+            let global = try ThresholdService.effectivePosition(for: .all, in: modelContext)
+            var sourcePositions: [String: EffectivePosition] = [:]
 
             for item in items {
-                let sourceMark: SortKey
-                if let cached = sourceMarks[item.sourceID] {
-                    sourceMark = cached
+                let source: EffectivePosition
+                if let cached = sourcePositions[item.sourceID] {
+                    source = cached
                 } else {
-                    sourceMark = try ThresholdService
+                    source = try ThresholdService
                         .effectivePosition(for: .source(item.sourceID), in: modelContext)
-                        .markSortKey
-                    sourceMarks[item.sourceID] = sourceMark
+                    sourcePositions[item.sourceID] = source
                 }
 
                 // "Late" means the item landed below a marker the user actually reads behind, so
                 // chronological ordering hides it where it would otherwise read as already-seen.
-                let threshold = max(globalMark, sourceMark)
-                let arrivedLate = !isFirstWalk && item.sortKey <= threshold
+                //
+                // Whichever marker is further along decides, and it brings its `deviceID` with it
+                // — the two are read together rather than as a `max` over keys alone, because the
+                // test below is about *whose* position this item slipped under.
+                let threshold = global.markSortKey >= source.markSortKey ? global : source
+                let arrivedLate = !isFirstWalk
+                    && isThisDevices(threshold)
+                    && item.sortKey <= threshold.markSortKey
                 if arrivedLate { lateArrivals += 1 }
 
                 upsert(item, arrivedLate: arrivedLate)
@@ -277,6 +282,36 @@ public actor SwiftDataIngestSink: IngestSink {
         // Deliberately does *not* touch `highestSeenID` or the resume cursor: the whole point of
         // the two-cursor scheme is that an unfinished run leaves the stop line where it was.
         try modelContext.save()
+    }
+
+    /// Whether the position an item is about to be measured against is one *this* device set.
+    ///
+    /// ## Why a second device must not flag late arrivals
+    ///
+    /// A late arrival is an item that turned up after **you had read past where it belongs** — it
+    /// sorts below the marker, so chronological ordering hides it, and the separate list exists so
+    /// it is not simply lost. That reading only holds when the marker moved because of reading
+    /// done *here*.
+    ///
+    /// On a second device it does not. Scroll to the top on the Mac and its marker jumps to the
+    /// newest article it holds; the phone then pulls that position and, on its next walk, fetches
+    /// the very articles the Mac read past. Every one of them lands below the marker, so every one
+    /// of them was flagged — and the phone announced a pile of "older items" for a backlog the
+    /// reader had just finished. Nothing arrived late; one device was catching up with another.
+    ///
+    /// This is the same trap `isFirstWalk` guards, one device removed: there the walk pages
+    /// downwards through its own backlog, here it pages downwards through somebody else's. Both
+    /// end with a list of thousands that means nothing.
+    ///
+    /// The cost is that a device which only ever *follows* another's positions will not populate
+    /// its own Older Items list — the flag is local, not synced, so those items are flagged on the
+    /// device where the reading actually happened, which is the one whose reader could have missed
+    /// them.
+    private func isThisDevices(_ position: EffectivePosition) -> Bool {
+        // An unread scope has no owner and nothing to be late against. `deviceID` is `nil` there,
+        // and the marker is `distantPast`, so nothing could sort below it anyway.
+        guard let owner = position.deviceID else { return false }
+        return owner == deviceID
     }
 
     /// Places a marker at the newest item for every scope that has none.
