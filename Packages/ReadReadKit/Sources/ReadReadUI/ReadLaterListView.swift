@@ -114,6 +114,10 @@ struct ReadLaterListView: View {
             // button was a second route to something the content already offers. The configured
             // key still works: `onKeyPress` below handles it over the list.
         }
+        // Without this the keys below are unreachable after a click: picking a row moves the
+        // selection and not the focus, and `onKeyPress` only fires for a focused view. See
+        // ``SwiftUICore/View/activatesColumn(_:onSelecting:moveFocus:)``.
+        .activatesColumn(.timeline, onSelecting: selectedItemID, moveFocus: moveFocus)
         .onKeyPress(.leftArrow) {
             moveFocus(.sidebar)
             return .handled

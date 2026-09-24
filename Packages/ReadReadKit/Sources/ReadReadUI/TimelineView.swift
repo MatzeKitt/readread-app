@@ -1181,6 +1181,11 @@ private struct TimelineList: View {
                     }
                 }
             }
+            // Everything below this line depends on the column being focused, and clicking a row
+            // does not focus it — the selection moves and the focus does not, so after a click the
+            // keyboard was dead over the list it had just been used on. See
+            // ``SwiftUICore/View/activatesColumn(_:onSelecting:moveFocus:)``.
+            .activatesColumn(.timeline, onSelecting: selectedItemID, moveFocus: moveFocus)
             // Left returns focus to the sidebar. Up/down are left alone so the list keeps its own
             // native selection movement, which is what makes arrow-key navigation feel right.
             .onKeyPress(.leftArrow) {

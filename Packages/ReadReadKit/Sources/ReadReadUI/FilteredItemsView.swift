@@ -105,6 +105,9 @@ struct FilteredItemsView: View {
                 RefreshToolbarButton()
             }
         }
+        // As in the other two lists: a click selects a row without focusing the column, which
+        // leaves the arrows below with nothing to fire on.
+        .activatesColumn(.timeline, onSelecting: selectedItemID, moveFocus: moveFocus)
         // The same column hand-off as the timeline and Read Later, so the arrow keys behave the
         // same way in all three.
         .onKeyPress(.leftArrow) {
