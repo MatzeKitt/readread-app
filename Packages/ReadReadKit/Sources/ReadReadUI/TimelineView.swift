@@ -380,6 +380,49 @@ private struct TimelineFoldSink: View {
     }
 }
 
+/// Runs the restore at the start of every merge session: once when the list appears, and again
+/// each time the app is activated after being away.
+///
+/// ## Why activation has to do this at all
+///
+/// Coming back to the app asks the same question as launching it — where is the reader, across
+/// every device — and the app already treats it that way everywhere else: the gate is re-armed
+/// (`AppServices.armPositionMerge()`), the pull runs, the counts follow the merged position. What
+/// was missing is the scroll. `restorePosition` was a `.task` on a view that never went away, so it
+/// ran at launch and never again, and that left ``TimelineList/adoptRemotePosition(_:proxy:)`` as
+/// the only thing that could move the list.
+///
+/// Adoption is deliberately narrower: it applies a **foreign** report, once, and only while this
+/// store holds the very article that report names. When it declines — most often because that
+/// article has not been fetched here yet — nothing happened at all, and the list sat where it was
+/// with the count beside it saying the reader was somewhere else. Which is what a phone shows after
+/// a few days asleep: the counts come out right, because they are an offset from the mark and need
+/// no particular row to exist, and the list never moves.
+///
+/// The restore answers the same question with what is actually in the store, retries as items
+/// arrive, and is the path that has always handled "the position is here and its article is not
+/// yet". Running it on activation is therefore not a second mechanism; it is the one that was
+/// already there, asked again at the moment the answer changes.
+///
+/// Its own view for the same reason as ``TimelineFoldSink``: observing `AppServices` from the
+/// list's own body would drag the timeline — and its `@Query` — through a rebuild on every
+/// activation.
+private struct TimelineRestoreTrigger: View {
+
+    let restore: @MainActor () async -> Void
+
+    @Environment(AppServices.self) private var services
+
+    var body: some View {
+        Color.clear
+            // Runs on appearance as well, which is why the list no longer carries a `.task` of its
+            // own: one trigger, and the generation starts it again at each activation.
+            .task(id: services.positionMergeGeneration) {
+                await restore()
+            }
+    }
+}
+
 /// A position another device reported, in both the form it was written in and the form this store
 /// can act on.
 ///
@@ -1236,15 +1279,20 @@ private struct TimelineList: View {
             .onKeyPress(phases: .down) { press in
                 handleShortcut(press)
             }
-            .task {
-                await restorePosition(proxy)
-            }
-            // Drawn behind the list, like the fold sink, so observing position rows takes its
-            // dependency there rather than in the list body.
+            // Drawn behind the list, like the fold sink, so observing position rows — and the
+            // merge gate's generation — takes its dependency there rather than in the list body.
+            //
+            // Both in one background rather than two, and that is not tidiness: this body is one
+            // chained expression, and the modifier that took it past what the type checker would
+            // finish in reasonable time was the *second* background, not anything inside it.
             .background {
                 TimelinePositionWatcher(scope: scope, itemCount: items.count) { position in
                     await adoptRemotePosition(position, proxy: proxy)
                 }
+                // Not a `.task` on the list itself any more: that ran once, when the list
+                // appeared, and an activation asks the same question again. See
+                // `TimelineRestoreTrigger`.
+                TimelineRestoreTrigger(restore: { await restorePosition(proxy) })
             }
             // The count rather than the newest id, which is what this watched before.
             //
@@ -1484,6 +1532,23 @@ private struct TimelineList: View {
         // a position this device is still in the middle of being corrected about.
         await services.waitForPositionMerge()
         guard !Task.isCancelled else { return }
+
+        // An activation pass — the list has already been placed once — has something to do only
+        // when the winning position came from somewhere else.
+        //
+        // This device's own row is by definition where this device left the reader, so scrolling
+        // back to it is at best a no-op. At worst it undoes the last seconds of reading: switching
+        // away on the Mac deliberately writes nothing, so a scroll made inside the commit's
+        // debounce is still only on screen, and "restoring" would take the reader back to the last
+        // row that was written down.
+        //
+        // Before the `defer` below is installed, so this returns without touching `hasRestored` or
+        // the fold — there is nothing to correct and nothing to re-record.
+        if hasRestored,
+           let winner = try? ThresholdService.effectivePosition(for: scope, in: modelContext),
+           winner.deviceID == DeviceIdentity.current.id {
+            return
+        }
 
         // Whether the fold has to be measured at the end, or is already known.
         var restoredRow: Int?

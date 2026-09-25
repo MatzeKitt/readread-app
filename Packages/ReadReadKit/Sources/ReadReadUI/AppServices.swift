@@ -70,6 +70,14 @@ public final class AppServices {
     /// ``armPositionMerge()`` for why it has to open either way.
     public private(set) var arePositionsMerged = false
 
+    /// How many merge sessions this launch has begun: one at start, and one for each activation
+    /// that re-arms the gate.
+    ///
+    /// Observable, and meant to be used as a task's identity rather than read for its value. "Have
+    /// the positions been merged" and "have they been merged *again*" are different questions, and
+    /// only the second one can re-run the work that was done at launch.
+    public private(set) var positionMergeGeneration = 0
+
     /// The longest the timeline will wait for the pull before carrying on without it.
     ///
     /// A bound rather than a guess at how long a sync takes. Offline, signed out, or pointed at a
@@ -257,6 +265,12 @@ public final class AppServices {
         }
 
         arePositionsMerged = false
+        // Stepped whenever a genuinely new merge begins, which is what lets a view re-run at each
+        // activation what it ran at launch. The flag alone cannot serve: it ends every session at
+        // `true`, so a view keyed on it sees the same value before and after being away, and the
+        // one place that matters — the restore — never ran a second time. See
+        // `TimelineRestoreTrigger`.
+        positionMergeGeneration += 1
         positionMergeTimer?.cancel()
         positionMergeTimer = Task { [weak self] in
             try? await Task.sleep(for: Self.positionMergeTimeout)
