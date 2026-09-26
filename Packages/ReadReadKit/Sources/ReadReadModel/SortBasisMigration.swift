@@ -98,11 +98,11 @@ public enum SortBasisMigration {
         }
 
         // 3. Put every marker back on the item it was on.
-        for (scope, itemID) in folds {
+        for fold in folds {
             let target: SortKey
-            if let itemID, let key = newKeys[itemID] {
+            if let itemID = fold.itemID, let key = newKeys[itemID] {
                 target = SortKey(rawValue: key)
-            } else if case .readLater = scope, let itemID,
+            } else if case .readLater = fold.scope, let itemID = fold.itemID,
                       let entry = try ReadLaterService.entry(for: itemID, in: context) {
                 // A saved item whose `CachedItem` has already been pruned keeps the key its
                 // snapshot carries, which is the only one there is.
@@ -112,7 +112,29 @@ public enum SortBasisMigration {
                 // reader is behind everything. `distantPast` is that same place in any basis.
                 target = .distantPast
             }
-            try ThresholdService.setPosition(scope, to: target, deviceID: deviceID, in: context)
+            try ThresholdService.setPosition(
+                fold.scope,
+                to: target,
+                deviceID: deviceID,
+                // The timestamp of the row this place was read from, never now.
+                //
+                // Stamping now was deliberate once — the comment said so: "Setting this device's
+                // row bumps its `updatedAt`, so it wins the reduction meanwhile." But this runs at
+                // launch, *before* the pull, and winning is precisely what it must not do. A
+                // device that has been shut for a week would re-date its week-old place as the
+                // freshest in the system, and the position waiting on the server — written
+                // yesterday, on the device actually being read — would lose to it.
+                //
+                // Carrying the derived timestamp says what is true: this is the same position it
+                // always was, expressed in the new basis. The same rule `reconcileScopeContainment`
+                // follows, for the same reason.
+                //
+                // Nothing is lost by not winning. Only this device's own rows are re-keyed here,
+                // and a foreign row that outranks one of them outranks the old-basis row it
+                // replaced too — so the reader ends up at the newest position either way.
+                updatedAt: fold.updatedAt,
+                in: context
+            )
             report.marksMoved += 1
         }
 
@@ -122,12 +144,21 @@ public enum SortBasisMigration {
         return report
     }
 
+    /// Where each positioned scope's marker sits, and how old that answer is.
+    private struct Fold {
+        var scope: ScopeID
+        var itemID: String?
+        /// The `updatedAt` of the row this place was reduced from, carried so the rewritten row
+        /// can keep it rather than claiming to be new.
+        var updatedAt: Date
+    }
+
     /// The item each positioned scope's marker currently sits on.
     ///
     /// Keyed by scope across *all* devices' rows, because the effective position is a reduction
     /// over them: the fold the reader is looking at may be one another device wrote, and that is
     /// the one to preserve.
-    private static func foldItemIDs(in context: ModelContext) throws -> [(ScopeID, String?)] {
+    private static func foldItemIDs(in context: ModelContext) throws -> [Fold] {
         let marks = try context.fetch(FetchDescriptor<PositionMark>())
         var scopes: [ScopeID] = []
         var seen: Set<String> = []
@@ -137,14 +168,26 @@ public enum SortBasisMigration {
         }
 
         return try scopes.map { scope in
+            // The winning row's own date, from the same reduction the item below is read through,
+            // so the two answers cannot come from different rows.
+            let updatedAt = try ThresholdService.effectivePosition(for: scope, in: context).updatedAt
+
             // Read Later orders `ReadLaterEntry`, not `CachedItem`, so it needs its own lookup —
             // and it very much needs one. Re-keying the entries while leaving this marker where it
             // was moves every saved item relative to it: the badge read `0` over a list with an
             // item still in it, which is a saved item the app had stopped mentioning.
             if case .readLater = scope {
-                return (scope, try savedEntryAtPosition(in: context)?.itemID)
+                return Fold(
+                    scope: scope,
+                    itemID: try savedEntryAtPosition(in: context)?.itemID,
+                    updatedAt: updatedAt
+                )
             }
-            return (scope, try ThresholdService.itemAtPosition(for: scope, in: context)?.id)
+            return Fold(
+                scope: scope,
+                itemID: try ThresholdService.itemAtPosition(for: scope, in: context)?.id,
+                updatedAt: updatedAt
+            )
         }
     }
 

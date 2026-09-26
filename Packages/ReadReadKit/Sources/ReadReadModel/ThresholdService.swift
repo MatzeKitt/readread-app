@@ -48,16 +48,22 @@ public enum ThresholdService {
     /// Returns the row it wrote, so the caller can queue it for sync in the same transaction as the
     /// change itself. A local edit and its outbox entry have to be saved together or not at all —
     /// otherwise a crash between the two loses the push and the position never leaves the device.
+    /// - Parameter updatedAt: When to date the row. Defaults to now, which is the answer for every
+    ///   caller that is recording where the reader *is*. A caller that merely re-expresses a
+    ///   position the app already held — a migration re-keying it, a repair deriving one — passes
+    ///   the timestamp it derived from instead, so a device that has been away cannot re-date a
+    ///   stale place into the freshest one in the system. See ``reconcileScopeContainment(deviceID:in:)``.
     @discardableResult
     public static func setPosition(
         _ scope: ScopeID,
         to target: SortKey,
         deviceID: String,
+        updatedAt: Date = .now,
         in context: ModelContext
     ) throws -> PositionMark {
         let mark = try mark(for: scope, deviceID: deviceID, in: context)
         mark.markSortKey = target
-        mark.updatedAt = .now
+        mark.updatedAt = updatedAt
         return mark
     }
 

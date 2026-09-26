@@ -204,8 +204,51 @@ struct SortBasisMigrationTests {
         #expect(rows.count == 1)
         #expect(rows.first?.markSortKey == foreign, "not ours to rewrite")
 
-        // This device's own row was written, and later, so it wins the reduction meanwhile.
-        #expect(try ThresholdService.effectivePosition(for: .all, in: context).markSortKey != foreign)
+        // This line used to assert the opposite — that the rewritten row won the reduction, on
+        // purpose, so the reader was placed by the basis this store had already migrated. That is
+        // the hazard: the pass runs at launch, *before* the pull, so winning means winning against
+        // positions that have not arrived yet. The rewritten row now carries the date it was
+        // derived from, so it wins nothing it did not already win.
+        let ours = try #require(
+            try context.fetch(FetchDescriptor<PositionMark>())
+                .first { $0.deviceID == device && $0.scopeRaw == ScopeID.all.rawValue }
+        )
+        #expect(ours.updatedAt == rows.first?.updatedAt, "derived from that row, so dated with it")
+    }
+
+    /// The hazard in full, in the order it actually happens: the pass runs at launch, the pull
+    /// lands a moment later, and the device that was *being read* has to win.
+    @Test("A basis bump does not re-date a place the reader left a week ago")
+    func keepsTheDateItDerivedFrom() throws {
+        let context = try makeMisdatedStore()
+        let lastRead = Date(timeIntervalSince1970: 1_600_000_000)
+        let ours = try ThresholdService.setPosition(
+            .all,
+            to: SortKey(millis: 1_700_000_000_000, id: "a"),
+            deviceID: device,
+            in: context
+        )
+        ours.updatedAt = lastRead
+        try context.save()
+
+        try SortBasisMigration.run(deviceID: device, in: context)
+
+        // Re-keyed, and no fresher than it was: the reader has not been anywhere since.
+        let row = try #require(
+            try context.fetch(FetchDescriptor<PositionMark>())
+                .first { $0.deviceID == device && $0.scopeRaw == ScopeID.all.rawValue }
+        )
+        #expect(row.updatedAt == lastRead)
+
+        // Which is the whole point. The position written on the other device while this one was
+        // shut arrives after the pass has run, and it has to outrank what it finds here.
+        try ThresholdService.setPosition(
+            .all,
+            to: SortKey(millis: 1_900_000_000_000, id: "b"),
+            deviceID: "iphone",
+            in: context
+        )
+        #expect(try ThresholdService.effectivePosition(for: .all, in: context).deviceID == "iphone")
     }
 
     @Test("Running twice changes nothing the second time")
