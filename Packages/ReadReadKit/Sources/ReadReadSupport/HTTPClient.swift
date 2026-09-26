@@ -272,17 +272,10 @@ public actor HTTPClient {
             return .seconds(max(0, seconds))
         }
 
-        // Mastodon sends an HTTP date on some rate-limit responses.
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        for format in ["EEE, dd MMM yyyy HH:mm:ss zzz", "EEEE, dd-MMM-yy HH:mm:ss zzz"] {
-            formatter.dateFormat = format
-            if let date = formatter.date(from: value) {
-                return .seconds(max(0, date.timeIntervalSinceNow))
-            }
-        }
-        return nil
+        // Mastodon sends an HTTP date on some rate-limit responses. Parsed by `HTTPDate`, which is
+        // where the formats live now that a second caller needs them.
+        guard let date = HTTPDate.parse(value) else { return nil }
+        return .seconds(max(0, date.timeIntervalSinceNow))
     }
 
     /// A short, log-safe excerpt of an error body.

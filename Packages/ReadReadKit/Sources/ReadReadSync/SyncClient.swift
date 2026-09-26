@@ -30,6 +30,13 @@ public actor SyncClient {
         self.http = http
     }
 
+    /// How far this device's clock sat from the server's on the last reply, in seconds.
+    ///
+    /// `nil` until a reply has been seen, and on a server whose replies carry no `Date` — it is
+    /// required of an HTTP response, but this endpoint is self-hosted and a proxy in front of it
+    /// could be anything. Absence means "not known", never "in agreement".
+    public private(set) var lastClockSkew: TimeInterval?
+
     public func configure(_ configuration: SyncConfiguration?) {
         self.configuration = configuration
     }
@@ -97,15 +104,27 @@ public actor SyncClient {
             attempt.setValue("Bearer \(try requireConfiguration().token)", forHTTPHeaderField: "Authorization")
         }
 
-        let data: Data
+        let reply: HTTPReply
         do {
-            data = try await http.send(attempt)
+            reply = try await http.reply(for: attempt)
         } catch let error as HTTPError {
             throw Self.translate(error)
         }
 
+        // Read from every reply, because every reply carries it and the measurement is a
+        // subtraction. See ``ClockSkew`` for what it is for — in short, positions are ordered by
+        // wall clock and nothing else in the app can tell a wrong clock from a stale position.
+        //
+        // Taken against the moment the reply arrived rather than a time recorded earlier: the
+        // request's own latency is part of the error either way, and seconds of it do not matter to
+        // a threshold measured in minutes.
+        if let header = reply.headers.first(where: { $0.key.caseInsensitiveCompare("Date") == .orderedSame })?.value,
+           let serverNow = HTTPDate.parse(header) {
+            lastClockSkew = ClockSkew.seconds(localNow: .now, serverNow: serverNow)
+        }
+
         do {
-            return try JSONDecoder().decode(Value.self, from: data)
+            return try JSONDecoder().decode(Value.self, from: reply.data)
         } catch let error as SyncError {
             throw error
         } catch {

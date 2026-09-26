@@ -306,6 +306,16 @@ private struct SyncEndpointSection: View {
     @State private var hasStoredToken = false
     @State private var status: EndpointStatus = .idle
 
+    /// The single sync-state row, for the clock it recorded. A `@Query` rather than a fetch so the
+    /// line appears when a run measures one, without this screen having to be reopened.
+    @Query private var syncStates: [SyncState]
+
+    /// What to say about this device's clock, if anything.
+    private var clockWarning: String? {
+        guard let skew = syncStates.first?.clockSkewSeconds else { return nil }
+        return ClockSkew.warning(for: skew)
+    }
+
     private enum EndpointStatus: Equatable {
         case idle
         case checking
@@ -343,6 +353,20 @@ private struct SyncEndpointSection: View {
 
                 Spacer()
                 statusView
+            }
+
+            // Only when there is something wrong to say. A clock that agrees with the server is
+            // the ordinary case and needs no line of its own — this is here so that the one fault
+            // the app cannot correct has somewhere to show up. See `ClockSkew`.
+            if let warning = clockWarning {
+                Label {
+                    Text(warning)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } icon: {
+                    Image(systemName: "clock.badge.exclamationmark")
+                        .foregroundStyle(.orange)
+                }
             }
         } header: {
             Text("Position Sync")

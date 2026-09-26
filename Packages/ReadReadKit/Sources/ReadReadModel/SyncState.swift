@@ -25,6 +25,17 @@ public final class SyncState {
     /// Last failure, for the settings screen. Cleared on the next success.
     public var lastErrorDescription: String?
 
+    /// How far this device's clock sat from the sync server's on the last run, in seconds.
+    ///
+    /// Positive means this device is ahead. Stored rather than merely observed, because the screen
+    /// that reports it is opened long after the run that measured it — and because a reader
+    /// checking why their position keeps slipping is not going to wait for a sync to happen while
+    /// they look. `nil` until a run has measured one; see `ClockSkew`.
+    public var clockSkewSeconds: Double?
+
+    /// When that measurement was taken, so an old one can be read as old.
+    public var clockSkewCheckedAt: Date?
+
     public init(id: String = "default") {
         self.id = id
     }

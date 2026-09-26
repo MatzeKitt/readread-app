@@ -3006,6 +3006,28 @@
         }
       }
     },
+    "This device's clock is about %@ ahead of the sync server. Reading positions are ordered by time, so this device can hold a place it has already left.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Uhr dieses Geräts geht dem Sync-Server etwa %@ vor. Positionen werden nach Zeit sortiert – dieses Gerät kann dadurch eine Stelle halten, die längst verlassen wurde."
+          }
+        }
+      }
+    },
+    "This device's clock is about %@ behind the sync server. Reading positions are ordered by time, so this device can lose its place to an older one.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Uhr dieses Geräts geht dem Sync-Server etwa %@ nach. Positionen werden nach Zeit sortiert – dieses Gerät kann seine Stelle dadurch an eine ältere verlieren."
+          }
+        }
+      }
+    },
     "This image could not be loaded.": {
       "extractionState": "manual",
       "localizations": {

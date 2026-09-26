@@ -39,6 +39,15 @@ public actor SyncStore {
         try modelContext.save()
     }
 
+    /// Records how far this device's clock sat from the server's, for the settings screen to
+    /// explain a position that keeps slipping. See `ClockSkew`.
+    public func recordClockSkew(_ seconds: TimeInterval) throws {
+        let state = try state()
+        state.clockSkewSeconds = seconds
+        state.clockSkewCheckedAt = .now
+        try modelContext.save()
+    }
+
     // MARK: - Pushing
 
     /// Turns queued local changes into push records.

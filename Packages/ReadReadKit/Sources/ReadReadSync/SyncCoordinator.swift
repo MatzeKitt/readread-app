@@ -163,6 +163,14 @@ public actor SyncCoordinator {
         }
         outcome.isComplete = isComplete
 
+        // Between the two halves, because by now a reply has certainly been seen and the push may
+        // yet throw. Recorded on every run rather than only when it is bad: a reader looking at
+        // this screen wants to know the clock has been checked, and a stale figure that was fine
+        // last week says nothing about today.
+        if let skew = await client.lastClockSkew {
+            try? await store.recordClockSkew(skew)
+        }
+
         // MARK: Push
         outcome.pushedRecords = try await push(client: client, store: store)
 
