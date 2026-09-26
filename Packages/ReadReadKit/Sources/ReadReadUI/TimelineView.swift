@@ -634,38 +634,41 @@ private struct TimelineCountLabel: View {
 struct RefreshToolbarButton: View {
 
     @Environment(AppServices.self) private var services
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        #if os(macOS)
-        button
-            // Not while Reduce Motion is on. On the Mac this is the app's one piece of
-            // *continuous decoration* — the arrow turns for as long as a refresh takes, which on a
-            // slow network is a long time to keep something spinning at someone who has asked for
-            // less movement. The button being disabled is what says a refresh is running; the spin
-            // only ever dressed that up.
-            .symbolEffect(.rotate, isActive: services.isRefreshing && !reduceMotion)
-        #else
-        // A spinner in place of the button, rather than an effect on it, because a symbol effect
-        // does not survive the trip to a `UIBarButtonItem`: what crosses is the label's *image*,
-        // not the view it was attached to. The same reason a `ProgressView` in the label's icon
-        // slot showed nothing — there was no image in it to take. As the item's own content
-        // SwiftUI has to host a real view, and the indicator renders.
+        // A spinner in place of the button, rather than an effect on it, on both platforms.
+        //
+        // On iOS it is the only thing that works: a symbol effect does not survive the trip to a
+        // `UIBarButtonItem`, because what crosses is the label's *image*, not the view it was
+        // attached to. The same reason a `ProgressView` in the label's icon slot showed nothing —
+        // there was no image in it to take. As the item's own content SwiftUI has to host a real
+        // view, and the indicator renders.
+        //
+        // On the Mac a turning arrow did work, and was still the wrong picture. An indeterminate
+        // spinner is what every other Mac app puts in a toolbar while it is fetching, and the two
+        // platforms saying the same thing in the same shape is worth more than the Mac having its
+        // own flourish.
         //
         // Swapping the whole item changes its identity, so it crossfades rather than morphing.
         // That is the intended reading here: the button is gone for as long as the work runs.
         //
-        // Deliberately *not* gated on Reduce Motion, unlike the Mac's spin. This is not decoration
-        // standing in for a disabled button — on a phone it is the only thing on screen saying the
-        // app is working, and a progress indicator is the platform's own idiom for exactly that.
+        // Deliberately *not* gated on Reduce Motion, which the Mac's spin was. A spinner is not
+        // decoration dressing up a disabled button — while it is up it is the only thing on screen
+        // saying the app is working, and a progress indicator is the platform's own idiom for
+        // exactly that, on both platforms, whatever the motion setting says.
         if services.isRefreshing {
             ProgressView()
                 .controlSize(.small)
+                // A bare indicator is the spinner alone, where the button it replaces is a glyph
+                // *plus* the button's own insets. Dropped into the same toolbar item that reads as
+                // a smaller control that has shrunk, and the strip shifts around it as it comes and
+                // goes. The padding buys back roughly what the button's chrome was contributing, so
+                // the item keeps its footprint for the length of the run.
+                .padding(10)
                 .accessibilityLabel("Refreshing")
         } else {
             button
         }
-        #endif
     }
 
     private var button: some View {
@@ -673,7 +676,6 @@ struct RefreshToolbarButton: View {
             Task { await services.refreshNow() }
         }
         .keyboardShortcut("r", modifiers: .command)
-        .disabled(services.isRefreshing)
         .toolbarButtonHelp("Refresh")
     }
 }
