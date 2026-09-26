@@ -163,6 +163,24 @@ public actor RefreshEngine {
         }
     }
 
+    /// Sends what the outbox holds, now, without pulling or touching anything else.
+    ///
+    /// For the way out of the app — see ``SyncCoordinator/pushPending()``. Deliberately narrower
+    /// than ``perform(_:trigger:)``: no pull, no filter or account reconciliation, no badge. Those
+    /// exist to make what *arrived* take effect, and nothing is arriving; what they would cost is a
+    /// hop to the main actor, at the one moment the main actor may be blocked waiting for this.
+    ///
+    /// Silent about failure, like the debounced push it stands in for: the records stay queued and
+    /// go out on the next launch, which is exactly where they would have been anyway.
+    public func pushPendingChanges() async {
+        // Read off this actor, as `runSync` does: building the configuration reads the bearer token
+        // from the Keychain.
+        let configuration = await endpoint.configuration()
+        await syncClient.configure(configuration)
+        guard configuration != nil else { return }
+        _ = try? await syncCoordinator.pushPending()
+    }
+
     private func runSync() async throws {
         // Read once, and off this actor: building a configuration reads the bearer token from the
         // Keychain, which can block until the user answers a SecurityAgent prompt.

@@ -164,13 +164,26 @@ public actor SyncCoordinator {
         outcome.isComplete = isComplete
 
         // MARK: Push
+        outcome.pushedRecords = try await push(client: client, store: store)
+
+        // Note: the push response's `maxRevision` is deliberately *not* stored as the pull cursor.
+        // Another device may hold a lower revision this device has not pulled, and adopting it
+        // would skip that change permanently.
+        return outcome
+    }
+
+    /// Sends whatever the outbox holds.
+    ///
+    /// - Returns: How many records left the device.
+    @discardableResult
+    private static func push(client: SyncClient, store: SyncStore) async throws -> Int {
         let pending = try await store.pendingPushRecords()
-        guard !pending.isEmpty else { return outcome }
+        guard !pending.isEmpty else { return 0 }
 
         do {
             _ = try await client.push(pending)
             try await store.clearPending(pending)
-            outcome.pushedRecords = pending.count
+            return pending.count
         } catch let error as SyncError {
             // A rejection is permanent — the record is malformed and will fail identically forever,
             // so it is dropped rather than left to block everything queued behind it.
@@ -184,10 +197,35 @@ public actor SyncCoordinator {
             try await store.failPending(pending, permanent: false)
             throw error
         }
+    }
 
-        // Note: the push response's `maxRevision` is deliberately *not* stored as the pull cursor.
-        // Another device may hold a lower revision this device has not pulled, and adopting it
-        // would skip that change permanently.
-        return outcome
+    /// Pushes what is queued **without pulling first**, for the moment the app is leaving.
+    ///
+    /// ## Why the pull-first rule gives way here, and only here
+    ///
+    /// A full run pulls first so a local change is merged against the newest server state before
+    /// being sent. That rule is about what the reader sees: a conflicting remote change reaches
+    /// them before their own edit goes over the top of it. Leaving the app is the one moment there
+    /// is nobody to show it to, and a pull is also the slow half of a run — on the way out the time
+    /// is not there to spend.
+    ///
+    /// Nothing is lost by skipping it. Positions are per-device rows that cannot conflict at all;
+    /// every other record is last-write-wins against a store this device pulls in full the next
+    /// time it opens. The record being sent is the same record either way — the only difference is
+    /// whether it leaves now or sits in the outbox until this device is next launched, which can be
+    /// days, and during which the other device is read with no idea where this one stopped.
+    ///
+    /// Joins a run already in flight rather than pushing beside it, so the same records are not
+    /// sent twice, and then pushes anyway: a run that finished before the last fold was written has
+    /// not sent it.
+    ///
+    /// - Returns: How many records left the device.
+    @discardableResult
+    public func pushPending() async throws -> Int {
+        if let inFlight {
+            // Its failure is not this call's to report. Whatever it left queued is picked up below.
+            _ = try? await inFlight.value
+        }
+        return try await Self.push(client: client, store: store)
     }
 }

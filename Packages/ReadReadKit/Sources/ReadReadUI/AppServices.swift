@@ -437,6 +437,93 @@ public final class AppServices {
         await coordinator.refresh(.syncState, trigger: .localChange)
     }
 
+    /// Sends what is queued **before the app goes away**.
+    ///
+    /// ## The gap this closes
+    ///
+    /// A settled fold is written to the store and queued for sync in one transaction, and the push
+    /// itself goes through ``syncSoon()`` — a two-second debounce, which is right for a reader who
+    /// is scrolling and wrong for one who is leaving. On the Mac the process is gone well before
+    /// those two seconds are up; on iOS it is suspended, which amounts to the same thing. The
+    /// record then sits in the outbox until this device is next launched, and in the meantime the
+    /// other device can be read for a whole session with no idea where this one stopped.
+    ///
+    /// Ordering still came out right — a row keeps the `updatedAt` it was written with, so a
+    /// late-arriving old position does not outrank a newer one — so what this buys is timeliness,
+    /// which is the whole point of syncing a reading position at all.
+    ///
+    /// ## Why the two platforms do it differently
+    ///
+    /// iOS hands out time for exactly this through `beginBackgroundTask`, so the push runs as an
+    /// ordinary asynchronous task and the app suspends when it is done. Being asynchronous also
+    /// settles the ordering for free: every synchronous observer of the same notification — the
+    /// timeline's flush among them — has finished before this reads the outbox.
+    ///
+    /// The Mac has no such API for termination: `willTerminate` handlers run and the process
+    /// exits. So the push is started off the main actor and waited for, with a hard cap. Blocking
+    /// the main thread is not something to do lightly, and this is the one place it is the honest
+    /// choice — there is nothing left to draw, and the alternative is losing the reading position
+    /// of the session that just ended. `Task.detached` is load-bearing: a plain `Task` would
+    /// inherit this actor and deadlock against the very thread that is waiting for it.
+    public func syncBeforeLeaving() {
+        // The debounce is about to become irrelevant, and letting it fire mid-shutdown would start
+        // a second push against the records this one is clearing.
+        pendingPush?.cancel()
+        pendingPush = nil
+
+        #if os(macOS)
+        let finished = DispatchSemaphore(value: 0)
+        Task.detached { [engine] in
+            await engine.pushPendingChanges()
+            finished.signal()
+        }
+        // Whatever has not gone out by the cap stays queued for the next launch, which is exactly
+        // where it would have been without any of this.
+        _ = finished.wait(timeout: .now() + Self.exitPushLimit)
+        #else
+        pushWhileSuspending()
+        #endif
+    }
+
+    #if os(macOS)
+    /// The longest the Mac will hold up quitting for a push.
+    ///
+    /// Long enough for one request on a slow connection, short enough that quitting never reads as
+    /// the app having hung. The system's own patience at termination is not much greater.
+    private static let exitPushLimit: DispatchTimeInterval = .milliseconds(2_000)
+    #endif
+
+    #if os(iOS)
+    /// The system's promise of a little time after the app leaves the screen, spent on one push.
+    @ObservationIgnored private var backgroundPushTask: UIBackgroundTaskIdentifier = .invalid
+
+    private func pushWhileSuspending() {
+        // Never two at once: a second begin would leak the first, and the system ends the app for
+        // an expired task it was never given back.
+        endBackgroundPush()
+
+        backgroundPushTask = UIApplication.shared.beginBackgroundTask(withName: "Sync push") { [weak self] in
+            // Documented as arriving on the main thread. Guarded anyway, because
+            // `MainActor.assumeIsolated` off it is not an error but a crash — and the cost of
+            // being wrong is the app being killed for holding a task it never ended.
+            guard Thread.isMainThread else { return }
+            MainActor.assumeIsolated { self?.endBackgroundPush() }
+        }
+        guard backgroundPushTask != .invalid else { return }
+
+        Task { [weak self] in
+            await self?.engine.pushPendingChanges()
+            self?.endBackgroundPush()
+        }
+    }
+
+    private func endBackgroundPush() {
+        guard backgroundPushTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundPushTask)
+        backgroundPushTask = .invalid
+    }
+    #endif
+
     /// Re-reads the endpoint after it has been edited, and syncs against it.
     public func syncEndpointChanged() async {
         await engine.reloadSyncConfiguration()
@@ -775,6 +862,12 @@ public final class AppServices {
             // Asked for here because this is the moment the answer is known: the app is leaving,
             // so whatever the timers would have done next has to be done by the system instead.
             BackgroundRefresh.schedule(after: settings.refresh.backgroundRefreshSeconds)
+
+            // The last fold of the session is written by the timeline from this same notification,
+            // and the debounce that would have pushed it does not survive being suspended. This
+            // runs asynchronously, so the flush — a synchronous observer of the same notification
+            // — has already queued that record by the time the outbox is read.
+            syncBeforeLeaving()
             enqueueLifecycle { [coordinator] in
                 // Paused rather than left running: the work would not complete anyway once the
                 // process is suspended, and a half-finished ingest is the thing the two-cursor

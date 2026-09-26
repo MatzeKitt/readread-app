@@ -74,6 +74,58 @@ struct SyncCoordinatorTests {
         #expect(await transport.requestCount == 1)
     }
 
+    // MARK: - Leaving the app
+
+    /// The way out. A settled fold is queued in the same transaction as the position itself and
+    /// pushed on a two-second debounce — which is right for a reader who is scrolling and does not
+    /// survive one who is quitting.
+    @Test("A push on the way out sends what is queued without pulling")
+    func pushPendingSkipsThePull() async throws {
+        let transport = StubTransport([
+            .json(#"{"applied":[{"collection":"position","id":"all|mac","revision":2}],"maxRevision":2}"#),
+        ])
+        let (coordinator, store, _) = try makeCoordinator(transport)
+        try await store.enqueue(
+            collection: .position,
+            recordID: "all|mac",
+            payload: try positionPayload(device: "mac", millis: 9_000)
+        )
+
+        #expect(try await coordinator.pushPending() == 1)
+
+        // One request, and it is the push: no page was fetched on the way out.
+        #expect(await transport.requestCount == 1)
+        #expect(await transport.requests[0].httpMethod == "POST")
+        #expect(try await store.pendingPushRecords().isEmpty)
+    }
+
+    /// Nothing queued is the ordinary case — the debounce usually got there first — and it must
+    /// not cost a request at the moment the app is trying to exit.
+    @Test("A push on the way out with nothing queued sends nothing")
+    func pushPendingWithEmptyOutbox() async throws {
+        let transport = StubTransport([])
+        let (coordinator, _, _) = try makeCoordinator(transport)
+
+        #expect(try await coordinator.pushPending() == 0)
+        #expect(await transport.requestCount == 0)
+    }
+
+    /// A failure leaves the record where it was. The next launch pulls and pushes it, which is
+    /// where it would have been without any of this — so the way out can afford to be silent.
+    @Test("A failed push on the way out keeps the record queued")
+    func failedPushPendingKeepsTheRecord() async throws {
+        let transport = StubTransport([.status(500)])
+        let (coordinator, store, _) = try makeCoordinator(transport)
+        try await store.enqueue(
+            collection: .position,
+            recordID: "all|mac",
+            payload: try positionPayload(device: "mac", millis: 9_000)
+        )
+
+        await #expect(throws: (any Error).self) { try await coordinator.pushPending() }
+        #expect(try await store.pendingPushRecords().count == 1)
+    }
+
     // MARK: - Paging
 
     @Test("A run follows hasMore across pages")

@@ -1356,6 +1356,15 @@ private struct TimelineList: View {
             // usable at termination: the write and its `save()` complete before the app exits.
             .onReceive(NotificationCenter.default.publisher(for: Self.leavingForegroundNotification)) { _ in
                 flushPosition()
+                #if os(macOS)
+                // The push the flush queued, sent here rather than left to the two-second debounce
+                // that quitting cancels. Called from this observer rather than from `AppServices`'
+                // own, because on the Mac it *waits* — and what it waits for has to include the
+                // record written by the line above. iOS starts its push from the services' side,
+                // where being asynchronous puts it after every synchronous observer anyway. See
+                // `AppServices.syncBeforeLeaving()`.
+                services.syncBeforeLeaving()
+                #endif
             }
             // Attached here, beside the count it reports, rather than in the parent. Feeding the
             // live count upwards re-rendered the whole timeline view on every scroll callback,
