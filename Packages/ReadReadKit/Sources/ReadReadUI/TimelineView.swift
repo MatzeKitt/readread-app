@@ -1356,17 +1356,10 @@ private struct TimelineList: View {
             }
             // Delivered synchronously on the main thread by the poster, which is what makes this
             // usable at termination: the write and its `save()` complete before the app exits.
+            // The push that sends what this queues is started by `AppServices` straight after the
+            // notification — see `AppServices.prepareToQuit(then:)` and `syncBeforeLeaving()`.
             .onReceive(NotificationCenter.default.publisher(for: Self.leavingForegroundNotification)) { _ in
                 flushPosition()
-                #if os(macOS)
-                // The push the flush queued, sent here rather than left to the two-second debounce
-                // that quitting cancels. Called from this observer rather than from `AppServices`'
-                // own, because on the Mac it *waits* — and what it waits for has to include the
-                // record written by the line above. iOS starts its push from the services' side,
-                // where being asynchronous puts it after every synchronous observer anyway. See
-                // `AppServices.syncBeforeLeaving()`.
-                services.syncBeforeLeaving()
-                #endif
             }
             // Attached here, beside the count it reports, rather than in the parent. Feeding the
             // live count upwards re-rendered the whole timeline view on every scroll callback,
@@ -1884,7 +1877,7 @@ private struct TimelineList: View {
     /// screen. Both land exactly where they are most noticeable, because reading and then closing
     /// or opening something is what people do.
     ///
-    /// `willTerminate` on the Mac rather than `willResignActive`: switching apps must not write
+    /// Quitting on the Mac rather than `willResignActive`: switching apps must not write
     /// anything, or every ⌘-Tab would queue a sync push. On iOS `didEnterBackground` is both the
     /// last moment the process is guaranteed to run and the state it is usually killed from. And
     /// `onDisappear` for the navigation case, which covers switching scopes on the Mac as well.
@@ -1897,8 +1890,8 @@ private struct TimelineList: View {
 
         // The main context, synchronously, and that is the whole reason this is not
         // ``writePosition()``. The debounced write hops to a background context, and a hop does
-        // not come back from a process that is exiting — `willTerminate` and
-        // `didEnterBackground` are the last moments this code is guaranteed to run.
+        // not come back before the push that follows reads the outbox, and on iOS not from a
+        // process that is about to be suspended.
         let deviceID = DeviceIdentity.current.id
         guard
             let wrote = try? PositionCommit.write(
@@ -1922,7 +1915,7 @@ private struct TimelineList: View {
 
     private static var leavingForegroundNotification: Notification.Name {
         #if os(macOS)
-        NSApplication.willTerminateNotification
+        AppServices.willQuitNotification
         #else
         UIApplication.didEnterBackgroundNotification
         #endif

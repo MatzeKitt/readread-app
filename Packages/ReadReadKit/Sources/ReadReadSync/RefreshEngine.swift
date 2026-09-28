@@ -167,8 +167,8 @@ public actor RefreshEngine {
     ///
     /// For the way out of the app — see ``SyncCoordinator/pushPending()``. Deliberately narrower
     /// than ``perform(_:trigger:)``: no pull, no filter or account reconciliation, no badge. Those
-    /// exist to make what *arrived* take effect, and nothing is arriving; what they would cost is a
-    /// hop to the main actor, at the one moment the main actor may be blocked waiting for this.
+    /// exist to make what *arrived* take effect, and nothing is arriving; what they would cost is
+    /// time, at the one moment quitting is being held up for this.
     ///
     /// Silent about failure, like the debounced push it stands in for: the records stay queued and
     /// go out on the next launch, which is exactly where they would have been anyway.

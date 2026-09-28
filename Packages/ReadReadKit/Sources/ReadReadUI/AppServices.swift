@@ -459,38 +459,79 @@ public final class AppServices {
     /// settles the ordering for free: every synchronous observer of the same notification — the
     /// timeline's flush among them — has finished before this reads the outbox.
     ///
-    /// The Mac has no such API for termination: `willTerminate` handlers run and the process
-    /// exits. So the push is started off the main actor and waited for, with a hard cap. Blocking
-    /// the main thread is not something to do lightly, and this is the one place it is the honest
-    /// choice — there is nothing left to draw, and the alternative is losing the reading position
-    /// of the session that just ended. `Task.detached` is load-bearing: a plain `Task` would
-    /// inherit this actor and deadlock against the very thread that is waiting for it.
+    /// The Mac gets its time earlier, by asking AppKit to hold the quit — see
+    /// ``prepareToQuit(then:)``. By `willTerminate` it is too late for anything asynchronous.
+    #if os(iOS)
     public func syncBeforeLeaving() {
         // The debounce is about to become irrelevant, and letting it fire mid-shutdown would start
         // a second push against the records this one is clearing.
         pendingPush?.cancel()
         pendingPush = nil
-
-        #if os(macOS)
-        let finished = DispatchSemaphore(value: 0)
-        Task.detached { [engine] in
-            await engine.pushPendingChanges()
-            finished.signal()
-        }
-        // Whatever has not gone out by the cap stays queued for the next launch, which is exactly
-        // where it would have been without any of this.
-        _ = finished.wait(timeout: .now() + Self.exitPushLimit)
-        #else
         pushWhileSuspending()
-        #endif
     }
+    #endif
 
     #if os(macOS)
+    /// Posted synchronously on the main thread once quitting has been asked for, before the last
+    /// push starts. The timeline writes the session's final fold from it, so the push finds that
+    /// record already in the outbox.
+    public static let willQuitNotification = Notification.Name("ReadReadWillQuit")
+
     /// The longest the Mac will hold up quitting for a push.
     ///
     /// Long enough for one request on a slow connection, short enough that quitting never reads as
-    /// the app having hung. The system's own patience at termination is not much greater.
-    private static let exitPushLimit: DispatchTimeInterval = .milliseconds(2_000)
+    /// the app having hung.
+    private static let quitPushLimit: Duration = .seconds(2)
+
+    /// Hands AppKit its answer to the pending quit, once. Nil while no quit is pending.
+    @ObservationIgnored private var quitReply: (@MainActor () -> Void)?
+
+    /// The Mac half of `syncBeforeLeaving()`: sends what is queued, then lets the app quit.
+    ///
+    /// Reached from `applicationShouldTerminate` answering `.terminateLater` — see
+    /// ``QuitDelegate``. That is AppKit's own way of delaying termination for asynchronous work,
+    /// and the main thread keeps running its loop while it waits.
+    ///
+    /// This used to run from `willTerminate`, where nothing asynchronous survives, so it blocked
+    /// the main thread on a semaphore until the push signalled it. A semaphore has no owner, so the
+    /// system could not lend the push the main thread's priority: a user-interactive thread stood
+    /// waiting on default-priority work for up to two seconds, which is the priority inversion the
+    /// hang checker reports.
+    ///
+    /// - Parameter reply: Called on the main actor once the push has finished or the cap has
+    ///   passed, whichever comes first. Whatever has not gone out by then stays queued for the next
+    ///   launch, which is exactly where it would have been without any of this.
+    func prepareToQuit(then reply: @escaping @MainActor () -> Void) {
+        // AppKit does not ask again while an answer is pending, but a second push against the same
+        // outbox would be the result if it ever did.
+        guard quitReply == nil else { return }
+        quitReply = reply
+
+        // Letting the debounce fire mid-shutdown would start a second push against the records
+        // this one is clearing.
+        pendingPush?.cancel()
+        pendingPush = nil
+
+        // Synchronous, so the final fold is saved and queued before the push reads the outbox.
+        NotificationCenter.default.post(name: Self.willQuitNotification, object: nil)
+
+        // Both hold `self` strongly on purpose: a reply lost to a released owner is an app that
+        // never quits. The services live as long as the app anyway.
+        Task { [engine] in
+            await engine.pushPendingChanges()
+            self.finishQuitting()
+        }
+        Task {
+            try? await Task.sleep(for: Self.quitPushLimit)
+            self.finishQuitting()
+        }
+    }
+
+    private func finishQuitting() {
+        guard let reply = quitReply else { return }
+        quitReply = nil
+        reply()
+    }
     #endif
 
     #if os(iOS)
@@ -822,6 +863,10 @@ public final class AppServices {
         BackgroundRefresh.setOperation { [coordinator] in
             await coordinator.refreshDue(trigger: .backgroundTask)
         }
+
+        // Found by the app delegate from here rather than handed to it by the app: SwiftUI builds
+        // the delegate itself, and this is the one place both are known to exist.
+        QuitDelegate.services = self
 
         add(NSWorkspace.didWakeNotification, center: NSWorkspace.shared.notificationCenter) { [weak self] in
             guard let self else { return }

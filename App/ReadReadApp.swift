@@ -21,6 +21,11 @@ struct ReadReadApp: App {
     /// never opens never spins up timers or a network monitor.
     @State private var services: AppServices
 
+    #if os(macOS)
+    /// Holds up quitting until the last reading position has been sent.
+    @NSApplicationDelegateAdaptor(QuitDelegate.self) private var appDelegate
+    #endif
+
     init() {
         do {
             container = try ReadReadStore.container()
