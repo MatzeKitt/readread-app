@@ -49,5 +49,9 @@ struct ItemActionsMenu: View {
                 LinkActions.copy(url)
             }
         }
+
+        // After the post's own address, because these are the places the post points *at* —
+        // including any past the row's clip, which a tap on the text cannot reach.
+        StatusLinksMenu(item: item)
     }
 }

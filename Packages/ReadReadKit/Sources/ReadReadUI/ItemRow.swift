@@ -45,14 +45,9 @@ struct ItemRow: View {
     /// mismatch is visible in a way the density is not.
     var lineHeight: Double
 
-    /// Whether this post is behind a content warning.
-    ///
-    /// Derived rather than stored, from what ingest already does: a warned status has its
-    /// *spoiler* text as `title` and an empty `excerpt`, precisely so the list can show the
-    /// warning without showing the post. An empty post with no warning also lands here, and has
-    /// nothing to reveal either way.
+    /// Whether this post is behind a content warning. See ``CachedItem/isBehindContentWarning``.
     private var hasContentWarning: Bool {
-        item.kind == .status && item.excerpt.isEmpty
+        item.isBehindContentWarning
     }
 
     /// The post's text, with its formatting, from the shared parse cache.
@@ -166,9 +161,9 @@ struct ItemRow: View {
                     // away — so a post that was mostly a link read as a bare sentence with the
                     // link missing. Parsed once per post and cached; see `StatusTextCache`.
                     //
-                    // The links themselves are not live here: the attribute is dropped so the
-                    // row keeps its own tap, and the anchor text is underlined so it still reads
-                    // as a link. See `StatusTextCache.defusedLinks(_:)`.
+                    // The links are live: a tap on one opens it, through the shell's `openURL`
+                    // and so the in-app browser setting, and a tap anywhere else opens the post.
+                    // See `StatusTextCache.render(html:plain:limit:)` for why they were not, once.
                     Text(statusText)
                         .scaledFont(.subheadline, scale: bodyScale, lineHeight: lineHeight)
                         // Matching an article's excerpt, and see ``bodyColor`` for why it is a
@@ -177,6 +172,11 @@ struct ItemRow: View {
                         // the scanning — so `.secondary` dimmed the only thing on the row worth
                         // reading, and `.primary` collided with the links.
                         .foregroundStyle(Self.bodyColor)
+                        // The links are painted ``StatusTextCache/linkColor`` already. A live link
+                        // run is drawn in the tint, though, so the tint says it again — the same
+                        // belt and braces as the reading pane, and for the same stripe of accent
+                        // blue it prevents.
+                        .tint(StatusTextCache.linkColor)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -417,6 +417,22 @@ struct ItemRow: View {
     /// A row of three zeroes says nothing and costs a line of height on every post in the
     /// timeline, so the whole strip is dropped rather than shown empty.
     private var hasEngagement: Bool { engagement.hasAny }
+}
+
+extension CachedItem {
+
+    /// Whether this is a post behind a content warning.
+    ///
+    /// Derived rather than stored, from what ingest already does: a warned status has its
+    /// *spoiler* text as `title` and an empty `excerpt`, precisely so the list can show the
+    /// warning without showing the post. An empty post with no warning also lands here, and has
+    /// nothing to reveal either way.
+    ///
+    /// On the item rather than the row because the row's context menu has to agree with it: the
+    /// menu names the post's links, and their text is part of what the warning hides.
+    var isBehindContentWarning: Bool {
+        kind == .status && excerpt.isEmpty
+    }
 }
 
 /// Boosts, favourites and replies, as of the last refresh — and which of them the reader has done.

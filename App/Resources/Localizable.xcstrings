@@ -2126,6 +2126,17 @@
         }
       }
     },
+    "Open Link": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link öffnen"
+          }
+        }
+      }
+    },
     "Open links in the app": {
       "extractionState": "manual",
       "localizations": {

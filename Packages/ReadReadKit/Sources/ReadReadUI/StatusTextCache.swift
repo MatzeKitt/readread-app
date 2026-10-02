@@ -47,7 +47,7 @@ final class StatusTextCache {
     func text(id: String, html: String?, plain: String) -> AttributedString {
         if let cached = texts[id] { return cached }
 
-        let rendered = Self.render(html: html, plain: plain, stripsLinks: true)
+        let rendered = Self.render(html: html, plain: plain)
         texts[id] = rendered
         order.append(id)
         while order.count > limit, let oldest = order.first {
@@ -90,19 +90,18 @@ final class StatusTextCache {
     /// A thread and the few posts read before it.
     private let fullLimit = 60
 
-    /// - Parameter stripsLinks: Whether to defuse the link attributes, leaving the anchor text
-    ///   readable as a link but not acting as one. Set for a timeline row; never for the reading
-    ///   pane.
+    /// Links are live in both the row and the pane, and marked the same way in each — see
+    /// ``recoloured(_:)``.
     ///
-    ///   Both paths mark their links the same way — see ``recoloured(_:)``. This is only about the
-    ///   tap: a link inside a row is a second target sitting on top of the row's own, so tapping a
-    ///   post that happens to be mostly a link opened the browser instead of the post. The row is
-    ///   the affordance in a list; the links are live in the pane the row opens.
+    /// The row's were defused once, on the argument that a link is a second tap target on top of
+    /// the row's own, so tapping a post that is mostly a link opened the browser instead of the
+    /// post. True, and the lesser cost: with the links dead, following one from the timeline meant
+    /// opening the post first and tapping the same link again in the pane. A tap on a link opens
+    /// the link; a tap anywhere else in the row still opens the post.
     private static func render(
         html: String?,
         plain: String,
-        limit: Int? = characterLimit,
-        stripsLinks: Bool = false
+        limit: Int? = characterLimit
     ) -> AttributedString {
         guard let html, !html.isEmpty else { return clippedIfNeeded(AttributedString(plain), to: limit) }
 
@@ -116,7 +115,7 @@ final class StatusTextCache {
             // A post whose markup will not parse still has to show its words.
             return clippedIfNeeded(AttributedString(plain), to: limit)
         }
-        return clippedIfNeeded(stripsLinks ? defusedLinks(attributed) : liveLinks(attributed), to: limit)
+        return clippedIfNeeded(liveLinks(attributed), to: limit)
     }
 
     /// What a link is drawn in, in the row and in the reading pane alike.
@@ -142,23 +141,7 @@ final class StatusTextCache {
     /// `tint`. See ``liveLinks(_:)``.
     static let linkColor = Color.primary
 
-    /// The same text with its links marked but defused: no longer tappable.
-    ///
-    /// The tap is the whole reason. A link inside a row is a second target sitting on top of the
-    /// row's own, so tapping a post that happens to be mostly a link opened the browser instead of
-    /// the post. The row is the affordance in a list; the links are live in the pane it opens.
-    ///
-    /// Marking first and clearing `link` afterwards matters: with the link still in place the run
-    /// is unambiguously a link, which is what makes it findable.
-    static func defusedLinks(_ text: AttributedString) -> AttributedString {
-        var stripped = recoloured(text)
-        // Assigned across the whole range rather than run by run, for the reason in
-        // ``recoloured(_:)``.
-        stripped.link = nil
-        return stripped
-    }
-
-    /// The same text with its links marked and still live, for the reading pane.
+    /// The same text with its links marked and still live, for the row and the reading pane.
     static func liveLinks(_ text: AttributedString) -> AttributedString {
         recoloured(text)
     }

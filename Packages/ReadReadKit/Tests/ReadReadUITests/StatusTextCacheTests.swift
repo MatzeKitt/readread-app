@@ -13,9 +13,8 @@ struct StatusTextCacheTests {
     /// `plainText`, which dropped every anchor, so a post that was mostly a link read as a
     /// sentence with a hole in it.
     ///
-    /// The link attribute itself is deliberately not here any more — a row's links are stripped so
-    /// they take the row's own colour and leave the row's tap alone. See `StatusTextCacheLinkTests`
-    /// for that rule, and for the pane keeping its links.
+    /// The link attribute itself is not asserted here. See `StatusTextCacheLinkTests` for the
+    /// links, which are live in the row and in the pane alike.
     @Test("A post keeps the words its links were made of")
     func preservesLinkText() {
         let html = "<p>Read <a href=\"https://example.com\">this piece</a> and <em>then</em> reply.</p>"

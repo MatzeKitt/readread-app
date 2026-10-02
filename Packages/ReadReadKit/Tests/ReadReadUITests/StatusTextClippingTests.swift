@@ -69,8 +69,7 @@ struct StatusTextClippingTests {
     }
 
     /// Clipping walks runs, so it has to put them back. Exercised through ``clipped(_:to:)``
-    /// directly rather than through a row, because a row's own text now arrives here with its
-    /// links already stripped — testing it there would assert nothing.
+    /// directly rather than through a row, so the run being cut is exactly the one built here.
     @Test("Attributes before the cut survive it")
     func formattingSurvivesTheCut() {
         var text = Self.linked("Start the link", to: "https://example.com")

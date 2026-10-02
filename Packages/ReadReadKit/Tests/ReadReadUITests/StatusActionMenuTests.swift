@@ -103,7 +103,7 @@ import UIKit
 @Suite("Status action symbols")
 struct StatusActionSymbolTests {
 
-    @Test("Every symbol the actions use resolves", arguments: StatusActionSymbol.all)
+    @Test("Every symbol the actions use resolves", arguments: StatusActionSymbol.all + [StatusLinksMenu.symbol])
     func symbolResolves(name: String) throws {
         #if canImport(AppKit)
         #expect(NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil)

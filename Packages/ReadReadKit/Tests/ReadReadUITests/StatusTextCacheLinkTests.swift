@@ -7,12 +7,11 @@ import Testing
 /// Links in a timeline row, and in the reading pane.
 ///
 /// A run carrying a `.link` attribute is drawn in the accent colour, which put a stripe of blue
-/// through text that is otherwise the app's own greys — and, in a row, made the link a second tap
-/// target on top of the row's. Repainting settles the first and dropping the attribute settles the
-/// second, and together they leave a third question: with nothing to distinguish it, the anchor
-/// text is invisible *as a link*, which reads oddly in a post that is mostly a URL. So the run is
-/// underlined. It was contrast that did that job once, back when the row's text sat a step below
-/// full — the underline is what replaced it when the text came up to meet the link.
+/// through text that is otherwise the app's own greys. Repainting settles that, and leaves a second
+/// question: with nothing to distinguish it, the anchor text is invisible *as a link*, which reads
+/// oddly in a post that is mostly a URL. So the run is underlined. It was contrast that did that
+/// job once, back when the row's text sat a step below full — the underline is what replaced it
+/// when the text came up to meet the link.
 ///
 /// What must survive is the words. The row used to show `plainText`, which threw the anchor text
 /// away and left a post that was mostly a link reading as a bare sentence.
@@ -22,11 +21,15 @@ struct StatusTextCacheLinkTests {
 
     private let html = "<p>Read <a href=\"https://example.com/post\">this piece</a> today.</p>"
 
-    @Test("A row's text carries no links")
-    func rowTextHasNoLinks() {
+    /// A row's links open from the row. They were stripped once so the row kept its tap alone,
+    /// which left following one from the timeline a matter of opening the post first.
+    @Test("A row's text keeps its links")
+    func rowTextKeepsLinks() {
         let text = StatusTextCache.shared.text(id: "row-1", html: html, plain: "Read this piece today.")
 
-        #expect(text.runs.allSatisfy { $0.link == nil })
+        let linked = text.runs.filter { $0.link != nil }
+        #expect(linked.map { String(text[$0.range].characters) } == ["this piece"])
+        #expect(linked.first?.link?.absoluteString == "https://example.com/post")
     }
 
     /// The reading pane is where a post is actually read, and its links have to work.
@@ -51,13 +54,13 @@ struct StatusTextCacheLinkTests {
     /// Emphasis is deliberately not asserted here: `MastodonMarkdown` strips every tag except the
     /// anchors, so `<em>` never reaches the parser in the first place and a test for it would pass
     /// or fail for reasons unrelated to links.
-    @Test("Paragraph breaks survive having links stripped")
+    @Test("Paragraph breaks survive alongside links")
     func structureSurvives() {
         let source = "<p>First <a href=\"https://example.com\">link</a>.</p><p>Second.</p>"
         let text = StatusTextCache.shared.text(id: "row-3", html: source, plain: "First link. Second.")
 
         #expect(String(text.characters).contains("\n"))
-        #expect(text.runs.allSatisfy { $0.link == nil })
+        #expect(text.runs.contains { $0.link != nil })
     }
 
     /// The colour is the *only* thing left saying "link", so it has to land on exactly the anchor
