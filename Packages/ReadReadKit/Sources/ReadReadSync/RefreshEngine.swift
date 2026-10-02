@@ -291,12 +291,28 @@ public actor RefreshEngine {
         var completedAccountIDs: [UUID] = []
 
         for connection in built {
+            var sideFailures: [SideFailure] = []
+            // After the `do`, whichever way it ends: a side failure recorded before the main walk
+            // threw is still worth reporting.
+            defer {
+                for failure in sideFailures {
+                    switch failure {
+                    case .retryable(let error):
+                        let described = Self.describe(error, for: connection, in: context)
+                        report.failures.append(described)
+                        report.retryableFailures.append(described)
+                    case .needsUserAction(let error):
+                        report.failures.append(Self.describe(error, for: connection, in: context))
+                    }
+                }
+            }
             do {
                 let outcome = try await ingest(
                     connection,
                     sink: sink,
                     budget: budget,
-                    historyWindowDays: historyWindowDays
+                    historyWindowDays: historyWindowDays,
+                    sideFailures: &sideFailures
                 )
                 report.itemsWritten += outcome.itemsWritten
                 report.lateArrivals += outcome.lateArrivals
@@ -393,11 +409,24 @@ public actor RefreshEngine {
         _ = try? await service.prune(accountIDs: accountIDs, policy: policy)
     }
 
+    /// A failure in part of an account's ingest that did not stop the rest of it.
+    private enum SideFailure {
+
+        /// Reached the server and it went wrong; worth backing off and trying again.
+        case retryable(any Error)
+
+        /// Will fail the same way until the reader does something, such as signing in again.
+        case needsUserAction(any Error)
+    }
+
+    /// - Parameter sideFailures: Collects failures of parts of the account's ingest that did not
+    ///   stop the rest, so the caller can report them without losing what did succeed.
     private func ingest(
         _ connection: AccountConnection,
         sink: SwiftDataIngestSink,
         budget: IngestBudget,
-        historyWindowDays: Int
+        historyWindowDays: Int,
+        sideFailures: inout [SideFailure]
     ) async throws -> IngestOutcome {
         switch connection {
         case .freshRSS(let accountID, let client):
@@ -414,7 +443,32 @@ public actor RefreshEngine {
         case .mastodon(let accountID, let client):
             let planner = MastodonIngestPlanner(client: client, sink: sink, accountID: accountID)
             try await planner.refreshSource()
-            let outcome = try await planner.ingest(budget: budget, historyWindowDays: historyWindowDays)
+            var outcome = try await planner.ingest(budget: budget, historyWindowDays: historyWindowDays)
+
+            // After the home walk, and unable to undo it: the home timeline is what the account is
+            // for, and a reply from a stranger that could not be fetched this time is no reason to
+            // report the posts that were as lost.
+            do {
+                let mentions = try await planner.ingestMentions(
+                    budget: budget,
+                    historyWindowDays: historyWindowDays
+                )
+                outcome.itemsWritten += mentions.itemsWritten
+                outcome.pagesFetched += mentions.pagesFetched
+                outcome.lateArrivals += mentions.lateArrivals
+                outcome.isComplete = outcome.isComplete && mentions.isComplete
+                outcome.stoppedForBudget = outcome.stoppedForBudget || mentions.stoppedForBudget
+            } catch MastodonError.notificationsNotAuthorized {
+                // A token from before `read:notifications`. Reported, but neither retried nor
+                // counted against completeness: it will fail identically until the reader signs in
+                // again, and holding the badge back until then would cost them the count for
+                // everything else.
+                sideFailures.append(.needsUserAction(MastodonError.notificationsNotAuthorized))
+            } catch {
+                outcome.isComplete = false
+                sideFailures.append(.retryable(error))
+            }
+
             // After the walk, which looks up the parents of the replies it writes, so this only
             // ever sees the ones it could not: replies stored before parents were looked up, and
             // lookups that failed. Housekeeping, so it can never fail the refresh it rides on.
@@ -557,6 +611,22 @@ public actor RefreshEngine {
         case let error as URLError:
             // The code, not the description: `localizedDescription` embeds the failing URL.
             return "the server could not be reached (URLError \(error.errorCode))."
+
+        case let error as MastodonError:
+            switch error {
+            case .notificationsNotAuthorized:
+                // Names the button that fixes it, like the missing-credential sentence does. The
+                // home timeline is still loading, so this must not read as the account being broken.
+                return "replies and mentions from people you don't follow need this account authorised again. Use Reauthorise… on its row in Settings → Accounts."
+            case .tokenRevoked:
+                return "the instance rejected the token. Use Reauthorise… on its row in Settings → Accounts."
+            case .unexpectedResponse(let detail):
+                // A `DecodingError` description, which carries no URL and no headers — see the
+                // FreshRSS case above.
+                return "the instance answered with JSON the app could not read. \(detail)"
+            default:
+                return "it could not be refreshed (MastodonError)."
+            }
 
         default:
             return "it could not be refreshed (\(type(of: error)))."

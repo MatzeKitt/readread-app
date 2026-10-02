@@ -256,6 +256,27 @@ public struct MastodonPreviewCard: Codable, Sendable {
     public let providerName: String?
 }
 
+/// One entry of `GET /api/v1/notifications`.
+///
+/// Only what the mentions walk reads. A notification also names the account that caused it, but
+/// for a mention that is the status's own author, which the status already carries.
+public struct MastodonNotification: Codable, Sendable {
+
+    /// Opaque, and in the same length-then-lexical order as a status id — but its own sequence.
+    /// It is what the walk pages and stops by; it is never a status id.
+    public let id: MastodonStatusID
+
+    /// `mention`, `favourite`, `reblog` and so on. A string rather than an enum, so a type added
+    /// by a later version decodes instead of failing the whole page.
+    public let type: String
+
+    public let createdAt: Date
+
+    /// The post that mentions the reader. Documented as present for a mention; optional so a
+    /// notification whose post has since gone cannot fail the page it is on.
+    public let status: MastodonStatus?
+}
+
 /// Response of `GET /api/v2/search`.
 ///
 /// Only the statuses are decoded. The endpoint answers with accounts and hashtags in the same

@@ -50,6 +50,7 @@ struct MastodonOAuthTests {
             "read:bookmarks",
             "read:favourites",
             "read:search",
+            "read:notifications",
             "write:favourites",
             "write:statuses",
             "write:mutes",

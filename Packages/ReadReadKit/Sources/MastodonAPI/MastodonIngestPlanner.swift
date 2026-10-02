@@ -4,6 +4,9 @@ import ReadReadSupport
 
 /// Walks a Mastodon home timeline and writes what it finds, one page at a time, resumably.
 ///
+/// A second walk, over the account's mention notifications, writes into the same timeline: see
+/// ``ingestMentions(budget:historyWindowDays:now:)``.
+///
 /// Structurally the same two-cursor walk as the FreshRSS planner, for the same reason: a run that
 /// is cut short must not raise the stop line past pages it never fetched. The differences are all
 /// in the provider:
@@ -15,6 +18,9 @@ import ReadReadSupport
 public struct MastodonIngestPlanner: Sendable {
 
     public static let homeStreamKey = "home"
+
+    /// The cursor stream for ``ingestMentions(budget:historyWindowDays:now:)``.
+    public static let mentionsStreamKey = "mentions"
 
     private let client: MastodonClient
     private let sink: any IngestSink
@@ -59,7 +65,95 @@ public struct MastodonIngestPlanner: Sendable {
         historyWindowDays: Int = HistoryWindow.unlimited,
         now: Date = .now
     ) async throws -> IngestOutcome {
-        let streamKey = Self.homeStreamKey
+        try await walk(
+            streamKey: Self.homeStreamKey,
+            budget: budget,
+            historyWindowDays: historyWindowDays,
+            now: now
+        ) { [client, pageSize] maxID in
+            let page = try await client.homeTimeline(limit: pageSize, maxID: maxID)
+            return WalkPage(
+                entries: page.statuses.map { WalkEntry(id: $0.id, createdAt: $0.createdAt, status: $0) },
+                nextMaxID: page.nextMaxID
+            )
+        }
+    }
+
+    /// Walks the posts that mention this account, and writes them into its home timeline.
+    ///
+    /// The home timeline only carries replies from accounts the reader follows. Everyone else's
+    /// replies and mentions reach the account as notifications and nowhere else, so this is the
+    /// walk that brings them in.
+    ///
+    /// Written into the home timeline rather than a list of their own, under the status's own item
+    /// id. A reply from someone the reader follows arrives by both routes, and the shared id is what
+    /// makes the second arrival an update of the same row rather than a duplicate. Ordered by the
+    /// post's own time like everything else, so a reply sits where it was written.
+    ///
+    /// Its own stream with its own stop line, because it pages by **notification** ids, which are a
+    /// different sequence from the status ids the home walk stops by.
+    ///
+    /// - Throws: ``MastodonError/notificationsNotAuthorized`` when the token was granted without
+    ///   `read:notifications`; the home walk is unaffected by that and should carry on.
+    public func ingestMentions(
+        budget: IngestBudget = .foreground,
+        historyWindowDays: Int = HistoryWindow.unlimited,
+        now: Date = .now
+    ) async throws -> IngestOutcome {
+        try await walk(
+            streamKey: Self.mentionsStreamKey,
+            budget: budget,
+            historyWindowDays: historyWindowDays,
+            now: now
+        ) { [client, pageSize] maxID in
+            let page = try await client.mentionNotifications(limit: pageSize, maxID: maxID)
+            return WalkPage(
+                entries: page.notifications.map { notification in
+                    WalkEntry(
+                        id: notification.id,
+                        createdAt: notification.createdAt,
+                        // Anything but a mention is dropped here rather than by the server alone:
+                        // an instance older than `types[]` answers with every kind, and a
+                        // favourite's status is the reader's own post.
+                        status: notification.type == "mention" ? notification.status : nil
+                    )
+                },
+                nextMaxID: page.nextMaxID
+            )
+        }
+    }
+
+    // MARK: - Walking
+
+    /// One entry of a page: what the walk pages and stops by, and the post it brings, if any.
+    private struct WalkEntry: Sendable {
+
+        /// The stream's own id — a status id for the home timeline, a notification id for
+        /// mentions.
+        var id: MastodonStatusID
+        var createdAt: Date
+
+        /// Nil for an entry that only counts towards the cursors, such as a notification whose
+        /// post has gone.
+        var status: MastodonStatus?
+    }
+
+    private struct WalkPage: Sendable {
+        var entries: [WalkEntry]
+        var nextMaxID: String?
+    }
+
+    /// The two-cursor walk both streams share, newest first.
+    ///
+    /// One copy, because this is the part with the subtle bugs — the stop line must not rise past
+    /// pages a cut-short run never fetched — and two copies could only ever disagree about it.
+    private func walk(
+        streamKey: String,
+        budget: IngestBudget,
+        historyWindowDays: Int,
+        now: Date,
+        fetchPage: @Sendable (_ maxID: String?) async throws -> WalkPage
+    ) async throws -> IngestOutcome {
         let state = try await sink.cursorState(accountID: accountID, streamKey: streamKey)
 
         let cutoff = HistoryWindow.cutoff(forDays: historyWindowDays, now: now)
@@ -91,32 +185,38 @@ public struct MastodonIngestPlanner: Sendable {
             }
             try Task.checkCancellation()
 
-            let page = try await client.homeTimeline(limit: pageSize, maxID: maxID)
+            let page = try await fetchPage(maxID)
             outcome.pagesFetched += 1
 
-            for status in page.statuses {
-                if pendingHighest == nil || status.id > pendingHighest! {
-                    pendingHighest = status.id
+            for entry in page.entries {
+                if pendingHighest == nil || entry.id > pendingHighest! {
+                    pendingHighest = entry.id
                 }
             }
 
             var reachedStopLine = false
             var reachedCutoff = false
             var fresh: [MastodonStatus] = []
-            for status in page.statuses {
-                if let stopLine, status.id <= stopLine {
+            for entry in page.entries {
+                if let stopLine, entry.id <= stopLine {
                     reachedStopLine = true
                     break
                 }
-                if let cutoff, status.createdAt < cutoff {
+                if let cutoff, entry.createdAt < cutoff {
                     // Ordered newest-first, so everything after this is older too.
                     reachedCutoff = true
                     break
                 }
-                fresh.append(status)
+                if let status = entry.status {
+                    fresh.append(status)
+                }
             }
 
-            let parents = await replyParents(for: fresh, onPage: page.statuses, budget: budget)
+            let parents = await replyParents(
+                for: fresh,
+                onPage: page.entries.compactMap(\.status),
+                budget: budget
+            )
             let items = fresh.map { status in
                 map(status, replyParent: ReplyParentResolver.contextLookup(for: status, replyParents: parents))
             }
@@ -133,7 +233,7 @@ public struct MastodonIngestPlanner: Sendable {
             outcome.lateArrivals += lateArrivals
 
             // No `next` link means there is nothing older. An empty page means the same.
-            if reachedStopLine || reachedCutoff || page.nextMaxID == nil || page.statuses.isEmpty {
+            if reachedStopLine || reachedCutoff || page.nextMaxID == nil || page.entries.isEmpty {
                 outcome.isComplete = true
                 break
             }

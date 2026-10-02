@@ -52,12 +52,18 @@ public struct MastodonOAuth: Sendable {
     /// arrived in. Without it, acting as another account is impossible — that instance has never
     /// heard of the post's local id.
     ///
+    /// `read:notifications` is for replies and mentions from people the reader does not follow,
+    /// which reach an account through its notifications and nowhere else. The app lists mention
+    /// notifications only, and never dismisses or clears any.
+    ///
     /// Changing this string re-registers the app on the instance at the next sign-in, because
     /// `MastodonSignIn` only reuses a stored registration whose scopes match exactly. It does
     /// **not** upgrade a token already granted: an existing account keeps its read-only token
     /// until the reader signs in again, and a write against it fails with
-    /// ``MastodonError/writeNotAuthorized``, which the UI turns into a sentence saying so.
-    public static let scopes = "read:statuses read:accounts read:lists read:bookmarks read:favourites read:search write:favourites write:statuses write:mutes"
+    /// ``MastodonError/writeNotAuthorized``, which the UI turns into a sentence saying so. A token
+    /// granted before `read:notifications` likewise fails the mentions walk with
+    /// ``MastodonError/notificationsNotAuthorized``, while the home timeline keeps loading.
+    public static let scopes = "read:statuses read:accounts read:lists read:bookmarks read:favourites read:search read:notifications write:favourites write:statuses write:mutes"
 
     /// Where the instance sends the user back.
     ///

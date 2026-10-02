@@ -26,6 +26,14 @@ public enum MastodonError: Error, Sendable {
     /// for a sign-out they never performed.
     case writeNotAuthorized
 
+    /// The instance accepted the token but would not list its notifications.
+    ///
+    /// The read-side twin of ``writeNotAuthorized``: a 403 from the notifications endpoint means
+    /// the token predates this app asking for `read:notifications`, and signing in to the account
+    /// again is what fixes it. Kept apart from ``tokenRevoked`` for the same reason — the home
+    /// timeline still loads with that token, so calling it revoked would be untrue.
+    case notificationsNotAuthorized
+
     /// The acting instance has never heard of this post.
     ///
     /// Only reachable when acting as an account other than the one the post arrived in: the post
@@ -135,6 +143,21 @@ public struct MastodonTimelinePage: Sendable {
     }
 }
 
+/// One page of mention notifications, plus where to continue.
+public struct MastodonNotificationPage: Sendable {
+
+    public var notifications: [MastodonNotification]
+
+    /// The `max_id` for the next (older) page — a notification id, not a status id. Nil means
+    /// there is nothing older.
+    public var nextMaxID: String?
+
+    public init(notifications: [MastodonNotification], nextMaxID: String?) {
+        self.notifications = notifications
+        self.nextMaxID = nextMaxID
+    }
+}
+
 /// A client for one Mastodon instance.
 ///
 /// An actor because it holds the access token, which is replaced when the user re-authorises.
@@ -191,6 +214,48 @@ public actor MastodonClient {
 
         return MastodonTimelinePage(
             statuses: statuses,
+            nextMaxID: Self.maxID(fromLinkHeader: reply.header("Link"))
+        )
+    }
+
+    /// Fetches one page of the notifications that mention this account, newest first.
+    ///
+    /// `GET /api/v1/notifications?types[]=mention`. The only place a reply from someone the reader
+    /// does not follow reaches them at all: the home timeline carries replies from followed
+    /// accounts only, and there is no timeline of "replies to me".
+    ///
+    /// Filtered to mentions by the server, and again by type by the caller — an instance older
+    /// than `types[]` (3.5) ignores the parameter and answers with every kind.
+    ///
+    /// - Parameter maxID: A **notification** id. Nil starts at the newest.
+    /// - Throws: ``MastodonError/notificationsNotAuthorized`` when the token was granted without
+    ///   `read:notifications`.
+    public func mentionNotifications(
+        limit: Int = maxTimelineLimit,
+        maxID: String? = nil
+    ) async throws -> MastodonNotificationPage {
+        var query = [
+            URLQueryItem(name: "types[]", value: "mention"),
+            URLQueryItem(name: "limit", value: String(min(limit, Self.maxTimelineLimit))),
+        ]
+        if let maxID, !maxID.isEmpty {
+            query.append(URLQueryItem(name: "max_id", value: maxID))
+        }
+
+        let reply = try await authorizedReply(
+            for: try request(path: "api/v1/notifications", query: query),
+            forbidden: .notificationsNotAuthorized
+        )
+
+        let notifications: [MastodonNotification]
+        do {
+            notifications = try JSONDecoder.mastodon.decode([MastodonNotification].self, from: reply.data)
+        } catch let error as DecodingError {
+            throw MastodonError.unexpectedResponse(String(describing: error))
+        }
+
+        return MastodonNotificationPage(
+            notifications: notifications,
             nextMaxID: Self.maxID(fromLinkHeader: reply.header("Link"))
         )
     }
@@ -300,7 +365,7 @@ public actor MastodonClient {
         request.httpMethod = "POST"
         Self.setForm(["notifications": notifications ? "true" : "false"], on: &request)
 
-        let reply = try await authorizedReply(for: request, isWrite: true)
+        let reply = try await authorizedReply(for: request, forbidden: .writeNotAuthorized)
         do {
             return try JSONDecoder.mastodon.decode(MastodonRelationship.self, from: reply.data)
         } catch let error as DecodingError {
@@ -347,7 +412,7 @@ public actor MastodonClient {
         Self.setForm(fields, on: &request)
 
         do {
-            let reply = try await authorizedReply(for: request, isWrite: true)
+            let reply = try await authorizedReply(for: request, forbidden: .writeNotAuthorized)
             do {
                 return try JSONDecoder.mastodon.decode(MastodonStatus.self, from: reply.data)
             } catch let error as DecodingError {
@@ -444,7 +509,7 @@ public actor MastodonClient {
         // with neither a body nor a length.
         request.setValue("0", forHTTPHeaderField: "Content-Length")
 
-        let reply = try await authorizedReply(for: request, isWrite: true)
+        let reply = try await authorizedReply(for: request, forbidden: .writeNotAuthorized)
         do {
             return try JSONDecoder.mastodon.decode(MastodonStatus.self, from: reply.data)
         } catch let error as DecodingError {
@@ -452,11 +517,15 @@ public actor MastodonClient {
         }
     }
 
-    /// - Parameter isWrite: Whether a 403 should be read as a missing scope rather than as a dead
-    ///   token. Only a write can be refused for want of a scope in this app — every `read:` scope
-    ///   it asks for has been in the set since the first version — so on a read the two are not
-    ///   worth telling apart, and conflating them there keeps existing error messages intact.
-    private func authorizedReply(for request: URLRequest, isWrite: Bool = false) async throws -> HTTPReply {
+    /// - Parameter forbidden: What a 403 means for this request, when it can mean a missing scope
+    ///   rather than a dead token. Every write can be refused for want of a scope; of the reads,
+    ///   only notifications can, because `read:notifications` is the one `read:` scope added after
+    ///   the first version. On every other read the two are not worth telling apart, and
+    ///   conflating them there keeps existing error messages intact.
+    private func authorizedReply(
+        for request: URLRequest,
+        forbidden: MastodonError? = nil
+    ) async throws -> HTTPReply {
         var attempt = request
         if let accessToken {
             attempt.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
@@ -468,8 +537,8 @@ public actor MastodonClient {
             // Deliberately no retry: unlike FreshRSS, there is no credential to re-derive. A
             // Mastodon token is valid until revoked, so a 401 means the user has to authorise
             // again — retrying would just fail identically.
-            if isWrite, case .status(let code, _) = error, code == 403 {
-                throw MastodonError.writeNotAuthorized
+            if let forbidden, case .status(let code, _) = error, code == 403 {
+                throw forbidden
             }
             throw MastodonError.tokenRevoked
         }

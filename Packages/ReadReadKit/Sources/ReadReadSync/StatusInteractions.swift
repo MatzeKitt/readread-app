@@ -374,7 +374,9 @@ public struct StatusInteractions: Sendable {
             case .statusNotFound: return .notFoundOnInstance(account: account)
             case .invalidInstanceURL: return .invalidServerURL(account: account)
             case .rejected: return .rejected(account: account)
-            case .unexpectedResponse, .authorizationFailed: return .failed
+            // Notifications are never fetched while acting on a post; answered like any other
+            // failure rather than given a case of their own.
+            case .unexpectedResponse, .authorizationFailed, .notificationsNotAuthorized: return .failed
             }
         }
 
