@@ -19,6 +19,31 @@ public enum HTMLEntities {
         "frac14": "¼", "frac34": "¾", "sup2": "²", "sup3": "³", "micro": "µ",
         "ordm": "º", "ordf": "ª", "iexcl": "¡", "iquest": "¿", "shy": "",
         "ensp": " ", "emsp": " ", "thinsp": " ", "zwnj": "", "zwj": "",
+    ].merging(letters) { symbol, _ in symbol }
+
+    /// The accented letters HTML 4 gives names to: all of Latin-1, and the handful of Latin
+    /// Extended-A it adds.
+    ///
+    /// Missing until the search work found it, and the most common entities in German and French
+    /// feeds — `&auml;`, `&uuml;`, `&szlig;` and `&eacute;` are how a good deal of older publishing
+    /// software writes those letters. Undecoded, an excerpt read "&auml;ndern" and a search for
+    /// "ändern" could never find the article.
+    ///
+    /// Each name maps to exactly one letter, and case is significant: `&Auml;` is Ä, `&auml;` is ä.
+    private static let letters: [String: String] = [
+        "Agrave": "À", "Aacute": "Á", "Acirc": "Â", "Atilde": "Ã", "Auml": "Ä", "Aring": "Å",
+        "AElig": "Æ", "Ccedil": "Ç", "Egrave": "È", "Eacute": "É", "Ecirc": "Ê", "Euml": "Ë",
+        "Igrave": "Ì", "Iacute": "Í", "Icirc": "Î", "Iuml": "Ï", "ETH": "Ð", "Ntilde": "Ñ",
+        "Ograve": "Ò", "Oacute": "Ó", "Ocirc": "Ô", "Otilde": "Õ", "Ouml": "Ö", "Oslash": "Ø",
+        "Ugrave": "Ù", "Uacute": "Ú", "Ucirc": "Û", "Uuml": "Ü", "Yacute": "Ý", "THORN": "Þ",
+        "szlig": "ß",
+        "agrave": "à", "aacute": "á", "acirc": "â", "atilde": "ã", "auml": "ä", "aring": "å",
+        "aelig": "æ", "ccedil": "ç", "egrave": "è", "eacute": "é", "ecirc": "ê", "euml": "ë",
+        "igrave": "ì", "iacute": "í", "icirc": "î", "iuml": "ï", "eth": "ð", "ntilde": "ñ",
+        "ograve": "ò", "oacute": "ó", "ocirc": "ô", "otilde": "õ", "ouml": "ö", "oslash": "ø",
+        "ugrave": "ù", "uacute": "ú", "ucirc": "û", "uuml": "ü", "yacute": "ý", "thorn": "þ",
+        "yuml": "ÿ",
+        "OElig": "Œ", "oelig": "œ", "Scaron": "Š", "scaron": "š", "Yuml": "Ÿ",
     ]
 
     public static func decoding(_ text: String) -> String {

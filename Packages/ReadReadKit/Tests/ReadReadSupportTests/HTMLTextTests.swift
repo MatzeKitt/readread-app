@@ -51,14 +51,17 @@ struct HTMLTextTests {
         ("&amp;", "&"),
         ("&lt;tag&gt;", "<tag>"),
         ("&quot;quoted&quot;", "\"quoted\""),
-        ("caf&eacute;", "caf&eacute;"),
+        ("caf&eacute;", "café"),
+        ("&Auml;rger &uuml;ber Stra&szlig;en", "Ärger über Straßen"),
+        ("&OElig;uvre", "Œuvre"),
         ("it&rsquo;s", "it’s"),
         ("a&hellip;", "a…"),
         ("&mdash;", "—"),
+        ("a&madeup;b", "a&madeup;b"),
     ])
     func decodesNamedEntities(input: String, expected: String) {
-        // `&eacute;` is intentionally absent from the table: unknown entities must be passed
-        // through untouched rather than swallowed, so text is never silently lost.
+        // `&madeup;` is in no table: unknown entities must be passed through untouched rather
+        // than swallowed, so text is never silently lost.
         #expect(HTMLText.plainText(from: input) == expected)
     }
 
