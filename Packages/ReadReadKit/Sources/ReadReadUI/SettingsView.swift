@@ -158,8 +158,90 @@ private struct GeneralSettingsSections: View {
 
 private struct RefreshSettingsTab: View {
     var body: some View {
-        Form { RefreshSettingsSections() }
-            .formStyle(.grouped)
+        // A stack of its own, like the accounts and filters tabs, for the log the background
+        // section pushes: a `Settings` tab provides no navigation.
+        NavigationStack {
+            Form { RefreshSettingsSections() }
+                .formStyle(.grouped)
+        }
+    }
+}
+
+/// Everything background refreshing has done lately, newest first.
+///
+/// For diagnosing a phone that never refreshes in the background, which cannot be done by looking
+/// at it: the system gives no reason for waiting, and the runs happen with nobody watching. The
+/// entries' details are left in English, since they are system evidence meant to be shared into a
+/// bug report rather than read as copy.
+private struct BackgroundRefreshLogView: View {
+
+    @State private var entries = BackgroundRefresh.diagnostics.log
+
+    var body: some View {
+        List {
+            if entries.isEmpty {
+                Text("Nothing has happened yet.")
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(entries) { entry in
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Self.title(for: entry.event)
+                            .font(.body.weight(.medium))
+                        Spacer()
+                        Text(entry.date, format: .dateTime.day().month().hour().minute().second())
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let trigger = entry.trigger {
+                        Self.title(for: trigger)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let detail = entry.detail {
+                        Text(verbatim: detail)
+                            .font(.footnote.monospaced())
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Background Refresh Log")
+        .toolbar {
+            ToolbarItem {
+                ShareLink(item: BackgroundRefresh.logText(entries))
+                    .disabled(entries.isEmpty)
+            }
+        }
+        .refreshable { entries = BackgroundRefresh.diagnostics.log }
+        .task { entries = BackgroundRefresh.diagnostics.log }
+    }
+
+    private static func title(for event: BackgroundRefresh.LogEntry.Event) -> Text {
+        switch event {
+        case .scheduled: Text("Request queued")
+        case .declined: Text("Request turned down")
+        case .runStarted: Text("Background refresh started")
+        case .runFinished: Text("Background refresh finished")
+        case .runExpired: Text("Background refresh cut short")
+        case .statusChanged: Text("Background App Refresh changed")
+        case .registered: Text("Background task registered")
+        case .registrationFailed: Text("Background task not registered")
+        case .pendingChecked: Text("Pending requests checked")
+        }
+    }
+
+    private static func title(for trigger: BackgroundRefresh.Trigger) -> Text {
+        switch trigger {
+        case .launch: Text("At launch")
+        case .activated: Text("On returning to the app")
+        case .enteredBackground: Text("On leaving the app")
+        case .backgroundRun: Text("From a background refresh")
+        case .settingsChanged: Text("After a settings change")
+        case .statusChanged: Text("After Background App Refresh changed")
+        case .retry: Text("Tried again")
+        }
     }
 }
 
@@ -177,6 +259,14 @@ private struct RefreshSettingsSections: View {
     /// behind other windows for most of the day and refreshes there through its own timers; see
     /// `AppServices.record(_:)`, which is what fills this in.
     @State private var background = BackgroundRefresh.diagnostics
+
+    /// The system's own answer to whether a request is queued. See
+    /// ``BackgroundRefresh/pendingRequest()``.
+    @State private var pending: BackgroundRefresh.PendingRequest?
+
+    #if os(iOS)
+    @State private var systemStatus = UIBackgroundRefreshStatus.available
+    #endif
 
     /// What the timers have been doing, re-read while this screen is open.
     @State private var cadences = RefreshCoordinator.Diagnostics()
@@ -273,23 +363,69 @@ private struct RefreshSettingsSections: View {
                 }
             }
 
-            // Both platforms now, because both have something to decline. On iOS the system can
+            #if os(iOS)
+            // What the system says, beside what the app remembers. The diary records the answer
+            // to the last submit; these two are read live, and a disagreement between them is
+            // itself the finding.
+            LabeledContent("Background App Refresh") {
+                systemStatusText
+            }
+            #endif
+
+            LabeledContent("Next background refresh") {
+                if let pending, let earliest = pending.earliestBeginDate {
+                    Text("Not before \(earliest, format: .dateTime.hour().minute())")
+                } else if pending != nil {
+                    Text("Scheduled")
+                } else {
+                    Text("Not scheduled")
+                }
+            }
+
+            // Both platforms, because both have something to decline. On iOS the system can
             // refuse a `BGAppRefreshTask` outright; on the Mac the request is an
             // `NSBackgroundActivityScheduler` and the only way it is not queued is refreshing
             // being switched off altogether, which is worth saying rather than leaving as a
             // silent "Never" above.
-            if !background.isRequestQueued {
-                #if os(iOS)
+            if let refusal = background.refusal {
+                refusalNote(refusal)
+
+                if refusal != .cadencesOff {
+                    Button("Try Again") {
+                        services.retryBackgroundRefresh()
+                        Task { await reloadBackground() }
+                    }
+
+                    #if os(iOS)
+                    // Background App Refresh has no permission prompt to show again — iOS offers
+                    // none, for this switch — so the way back is the app's page in Settings.
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        Link("Open Settings", destination: url)
+                    }
+                    #endif
+                }
+            } else if background.isRequestQueued, pending == nil, background.lastScheduledAt != nil {
+                // Accepted and then not held: `submit` returns normally while the scheduler rejects
+                // the request on its own side, which is what a sideloaded phone did for days. The
+                // diary alone reported that as queued.
                 note(
-                    "iOS turned down the last request. Background App Refresh may be switched off for ReadRead in Settings.",
+                    "iOS accepted the last request but is not holding it, so it will not run. The log below has the details.",
                     systemImage: "exclamationmark.triangle"
                 )
-                #else
+            } else if !background.isRequestQueued {
+                // Declined by a build from before the reason was kept.
                 note(
-                    "Nothing is scheduled, because every cadence above is switched off.",
+                    "The last request was turned down. Try again to find out why.",
                     systemImage: "exclamationmark.triangle"
                 )
-                #endif
+                Button("Try Again") {
+                    services.retryBackgroundRefresh()
+                    Task { await reloadBackground() }
+                }
+            }
+
+            NavigationLink("Log") {
+                BackgroundRefreshLogView()
             }
         } header: {
             Text("In the background")
@@ -305,7 +441,7 @@ private struct RefreshSettingsSections: View {
             // `UserDefaults`, written on iOS by a process that is usually gone by the time anyone
             // looks, and on the Mac by a refresh that happened while this window was behind
             // something else.
-            background = BackgroundRefresh.diagnostics
+            await reloadBackground()
 
             // Polled rather than observed, and deliberately. The coordinator is an actor holding
             // scheduling state, not view state; making it `@Observable` would put the hot path of
@@ -318,7 +454,7 @@ private struct RefreshSettingsSections: View {
                 // be sitting in a window behind another app — which is precisely the state in
                 // which an unattended refresh gets recorded, so the figure would otherwise be
                 // stale exactly when it was changing.
-                background = BackgroundRefresh.diagnostics
+                await reloadBackground()
                 do {
                     try await Task.sleep(for: .seconds(5))
                 } catch {
@@ -364,6 +500,86 @@ private struct RefreshSettingsSections: View {
             Text(last, format: .relative(presentation: .named))
         } else {
             Text("Not yet")
+        }
+    }
+
+    private func reloadBackground() async {
+        background = BackgroundRefresh.diagnostics
+        pending = await BackgroundRefresh.pendingRequest()
+        #if os(iOS)
+        systemStatus = BackgroundRefresh.systemStatus
+        #endif
+    }
+
+    #if os(iOS)
+    @ViewBuilder
+    private var systemStatusText: some View {
+        switch systemStatus {
+        case .available: Text("On")
+        case .denied: Text("Off")
+        case .restricted: Text("Restricted")
+        @unknown default: Text("Unknown")
+        }
+    }
+    #endif
+
+    /// Why nothing is queued, in the words that point at the fix.
+    ///
+    /// One sentence per `BGTaskScheduler` refusal rather than one for all of them. The single
+    /// sentence this replaces blamed the Settings switch, which is only one of the three — and on
+    /// the phone that prompted this, the switch was on.
+    @ViewBuilder
+    private func refusalNote(_ refusal: BackgroundRefresh.Refusal) -> some View {
+        switch refusal {
+        case .cadencesOff:
+            note(
+                "Nothing is scheduled, because every cadence above is switched off.",
+                systemImage: "exclamationmark.triangle"
+            )
+        case .unavailable:
+            #if os(iOS)
+            if systemStatus == .denied {
+                note(
+                    "iOS turned down the last request because Background App Refresh is off for ReadRead, or for the whole device.",
+                    systemImage: "exclamationmark.triangle"
+                )
+            } else if systemStatus == .restricted {
+                note(
+                    "iOS turned down the last request because Background App Refresh is restricted on this device, for example by Screen Time or a management profile.",
+                    systemImage: "exclamationmark.triangle"
+                )
+            } else if ProcessInfo.processInfo.isLowPowerModeEnabled {
+                note(
+                    "iOS turned down the last request because Low Power Mode is on.",
+                    systemImage: "exclamationmark.triangle"
+                )
+            } else {
+                note(
+                    "iOS turned down the last request, although Background App Refresh is on now. Try again; if it is turned down again, the log below has the details.",
+                    systemImage: "exclamationmark.triangle"
+                )
+            }
+            #else
+            note(
+                "The last request was turned down.",
+                systemImage: "exclamationmark.triangle"
+            )
+            #endif
+        case .tooManyPendingRequests:
+            note(
+                "The last request was turned down because too many are already waiting.",
+                systemImage: "exclamationmark.triangle"
+            )
+        case .notPermitted:
+            note(
+                "The last request was turned down because this build does not declare its background task. That is a bug in ReadRead.",
+                systemImage: "exclamationmark.triangle"
+            )
+        case .unknown:
+            note(
+                "The last request was turned down for a reason the system did not name. The log below has the details.",
+                systemImage: "exclamationmark.triangle"
+            )
         }
     }
 

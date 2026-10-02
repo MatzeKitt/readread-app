@@ -24,6 +24,9 @@ struct ReadReadApp: App {
     #if os(macOS)
     /// Holds up quitting until the last reading position has been sent.
     @NSApplicationDelegateAdaptor(QuitDelegate.self) private var appDelegate
+    #else
+    /// Registers the background refresh task before launch finishes. See `BackgroundTaskDelegate`.
+    @UIApplicationDelegateAdaptor(BackgroundTaskDelegate.self) private var appDelegate
     #endif
 
     init() {
@@ -47,8 +50,18 @@ struct ReadReadApp: App {
         #endif
 
         let settings = SettingsModel()
+        let services = AppServices(container: container, settings: settings)
         _settings = State(initialValue: settings)
-        _services = State(initialValue: AppServices(container: container, settings: settings))
+        _services = State(initialValue: services)
+
+        #if os(iOS)
+        // Here rather than in `AppServices.start()`, which only runs once a window is on screen: a
+        // background launch may never build one, and its task handler runs as soon as the
+        // delegate registers it.
+        BackgroundRefresh.setOperation { [services] in
+            await services.performBackgroundRefresh()
+        }
+        #endif
     }
 
     var body: some Scene {
@@ -62,22 +75,6 @@ struct ReadReadApp: App {
         // Three columns need room; the default content size is far too narrow for a sidebar,
         // a timeline with excerpts, and a readable measure of article text side by side.
         .defaultSize(width: 1_280, height: 820)
-        #endif
-
-        #if os(iOS)
-        // The registration half of background refresh. The identifier, the `fetch` background
-        // mode and the `BGTaskSchedulerPermittedIdentifiers` entry have been in `Info.plist` from
-        // the start; nothing ever claimed them, so the phone only ever refreshed while someone was
-        // holding it. `BGTaskScheduler` requires every permitted identifier to be registered
-        // before launch finishes, which is what this modifier does — the matching request is
-        // submitted by `AppServices`.
-        //
-        // `services` is captured rather than reached through `self`: the closure is `@Sendable`
-        // and runs long after this scene was built, and the capture list resolves the `@State`
-        // once, here, on the main actor.
-        .backgroundTask(.appRefresh(BackgroundRefresh.identifier)) { [services] in
-            await services.performBackgroundRefresh()
-        }
         #endif
 
         #if os(macOS)
@@ -116,3 +113,23 @@ struct ReadReadApp: App {
     }
     #endif
 }
+
+#if os(iOS)
+/// Registers the background refresh task.
+///
+/// A delegate rather than SwiftUI's `.backgroundTask(.appRefresh(_:))` scene modifier, which
+/// registered the same identifier out of sight: every submit on a new phone failed with
+/// `notPermitted` while the build's `Info.plist` declared both the identifier and the `fetch`
+/// mode, and nothing could say whether the registration had happened. `BGTaskScheduler`
+/// requires it before launch finishes, which is exactly this callback, and it reports whether it
+/// worked. The two cannot coexist — registering an identifier twice raises.
+final class BackgroundTaskDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        BackgroundRefresh.register()
+        return true
+    }
+}
+#endif

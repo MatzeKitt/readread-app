@@ -376,6 +376,28 @@
         }
       }
     },
+    "After Background App Refresh changed": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach einer Änderung der „Hintergrundaktualisierung“"
+          }
+        }
+      }
+    },
+    "After a settings change": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach einer Änderung der Einstellungen"
+          }
+        }
+      }
+    },
     "All Items": {
       "extractionState": "manual",
       "localizations": {
@@ -442,6 +464,17 @@
         }
       }
     },
+    "At launch": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beim Start"
+          }
+        }
+      }
+    },
     "Attached media": {
       "extractionState": "manual",
       "localizations": {
@@ -475,6 +508,72 @@
         }
       }
     },
+    "Background App Refresh": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hintergrundaktualisierung"
+          }
+        }
+      }
+    },
+    "Background App Refresh changed": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„Hintergrundaktualisierung“ geändert"
+          }
+        }
+      }
+    },
+    "Background Refresh Log": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protokoll der Hintergrundaktualisierung"
+          }
+        }
+      }
+    },
+    "Background refresh cut short": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisierung im Hintergrund abgebrochen"
+          }
+        }
+      }
+    },
+    "Background refresh finished": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisierung im Hintergrund abgeschlossen"
+          }
+        }
+      }
+    },
+    "Background refresh started": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisierung im Hintergrund gestartet"
+          }
+        }
+      }
+    },
     "Background refreshes": {
       "extractionState": "manual",
       "localizations": {
@@ -482,6 +581,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aktualisierungen im Hintergrund"
+          }
+        }
+      }
+    },
+    "Background task not registered": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hintergrundaufgabe nicht registriert"
+          }
+        }
+      }
+    },
+    "Background task registered": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hintergrundaufgabe registriert"
           }
         }
       }
@@ -1058,6 +1179,17 @@
         }
       }
     },
+    "From a background refresh": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus einer Aktualisierung im Hintergrund"
+          }
+        }
+      }
+    },
     "Full Page": {
       "extractionState": "manual",
       "localizations": {
@@ -1477,6 +1609,17 @@
         }
       }
     },
+    "Log": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protokoll"
+          }
+        }
+      }
+    },
     "Look in": {
       "extractionState": "manual",
       "localizations": {
@@ -1620,6 +1763,17 @@
         }
       }
     },
+    "Next background refresh": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nächste Aktualisierung im Hintergrund"
+          }
+        }
+      }
+    },
     "No Accounts": {
       "extractionState": "manual",
       "localizations": {
@@ -1741,6 +1895,28 @@
         }
       }
     },
+    "Not before %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht vor %@"
+          }
+        }
+      }
+    },
+    "Not scheduled": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht geplant"
+          }
+        }
+      }
+    },
     "Not signed in on this device": {
       "extractionState": "manual",
       "localizations": {
@@ -1785,6 +1961,17 @@
         }
       }
     },
+    "Nothing has happened yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bisher ist nichts passiert."
+          }
+        }
+      }
+    },
     "Nothing is scheduled, because every cadence above is switched off.": {
       "extractionState": "manual",
       "localizations": {
@@ -1814,6 +2001,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "OK"
+          }
+        }
+      }
+    },
+    "Off": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus"
           }
         }
       }
@@ -1851,6 +2049,39 @@
         }
       }
     },
+    "On": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein"
+          }
+        }
+      }
+    },
+    "On leaving the app": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beim Verlassen der App"
+          }
+        }
+      }
+    },
+    "On returning to the app": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bei der Rückkehr in die App"
+          }
+        }
+      }
+    },
     "Only the saved summary is left: this item was put aside without an offline copy, and it is no longer in the cache.": {
       "extractionState": "manual",
       "localizations": {
@@ -1858,6 +2089,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Es ist nur die gespeicherte Zusammenfassung übrig: Dieser Eintrag wurde ohne Offline-Kopie zurückgelegt und liegt nicht mehr im Zwischenspeicher."
+          }
+        }
+      }
+    },
+    "Open Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einstellungen öffnen"
           }
         }
       }
@@ -1968,6 +2210,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pausieren, solange kein Fenster sichtbar ist"
+          }
+        }
+      }
+    },
+    "Pending requests checked": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausstehende Anfragen geprüft"
           }
         }
       }
@@ -2280,6 +2533,39 @@
         }
       }
     },
+    "Request queued": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anfrage vorgemerkt"
+          }
+        }
+      }
+    },
+    "Request turned down": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anfrage abgelehnt"
+          }
+        }
+      }
+    },
+    "Restricted": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eingeschränkt"
+          }
+        }
+      }
+    },
     "Results hidden until the poll ends": {
       "extractionState": "manual",
       "localizations": {
@@ -2364,6 +2650,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sichert den ausgewählten Eintrag – oder entfernt ihn, falls er bereits gesichert ist."
+          }
+        }
+      }
+    },
+    "Scheduled": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geplant"
           }
         }
       }
@@ -2874,6 +3171,61 @@
         }
       }
     },
+    "The last request was turned down because this build does not declare its background task. That is a bug in ReadRead.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die letzte Anfrage wurde abgelehnt, weil dieser Build seine Hintergrundaufgabe nicht deklariert. Das ist ein Fehler in ReadRead."
+          }
+        }
+      }
+    },
+    "The last request was turned down because too many are already waiting.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die letzte Anfrage wurde abgelehnt, weil bereits zu viele warten."
+          }
+        }
+      }
+    },
+    "The last request was turned down for a reason the system did not name. The log below has the details.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die letzte Anfrage wurde aus einem Grund abgelehnt, den das System nicht nennt. Die Einzelheiten stehen im Protokoll unten."
+          }
+        }
+      }
+    },
+    "The last request was turned down.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die letzte Anfrage wurde abgelehnt."
+          }
+        }
+      }
+    },
+    "The last request was turned down. Try again to find out why.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die letzte Anfrage wurde abgelehnt. Ein erneuter Versuch zeigt den Grund."
+          }
+        }
+      }
+    },
     "The page could not be loaded.": {
       "extractionState": "manual",
       "localizations": {
@@ -3134,6 +3486,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Token"
+          }
+        }
+      }
+    },
+    "Tried again": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut versucht"
           }
         }
       }
@@ -3591,6 +3954,17 @@
         }
       }
     },
+    "iOS accepted the last request but is not holding it, so it will not run. The log below has the details.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS hat die letzte Anfrage angenommen, hält sie aber nicht vor – sie wird also nicht ausgeführt. Die Einzelheiten stehen im Protokoll unten."
+          }
+        }
+      }
+    },
     "iOS decides when a closed app may refresh, and it can be a long wait. Swiping ReadRead away in the app switcher stops it being asked at all. The times above are the app's own cadences, which run while it is open.": {
       "extractionState": "manual",
       "localizations": {
@@ -3602,13 +3976,46 @@
         }
       }
     },
-    "iOS turned down the last request. Background App Refresh may be switched off for ReadRead in Settings.": {
+    "iOS turned down the last request because Background App Refresh is off for ReadRead, or for the whole device.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "iOS hat die letzte Anfrage abgelehnt. Möglicherweise ist „Hintergrundaktualisierung“ für ReadRead in den Einstellungen deaktiviert."
+            "value": "iOS hat die letzte Anfrage abgelehnt, weil „Hintergrundaktualisierung“ für ReadRead oder für das ganze Gerät deaktiviert ist."
+          }
+        }
+      }
+    },
+    "iOS turned down the last request because Background App Refresh is restricted on this device, for example by Screen Time or a management profile.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS hat die letzte Anfrage abgelehnt, weil „Hintergrundaktualisierung“ auf diesem Gerät eingeschränkt ist, etwa durch Bildschirmzeit oder ein Verwaltungsprofil."
+          }
+        }
+      }
+    },
+    "iOS turned down the last request because Low Power Mode is on.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS hat die letzte Anfrage abgelehnt, weil der Stromsparmodus aktiv ist."
+          }
+        }
+      }
+    },
+    "iOS turned down the last request, although Background App Refresh is on now. Try again; if it is turned down again, the log below has the details.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS hat die letzte Anfrage abgelehnt, obwohl „Hintergrundaktualisierung“ inzwischen aktiviert ist. Ein erneuter Versuch lohnt sich; wird auch er abgelehnt, stehen die Einzelheiten im Protokoll unten."
           }
         }
       }

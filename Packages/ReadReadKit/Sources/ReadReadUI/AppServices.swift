@@ -180,7 +180,7 @@ public final class AppServices {
                 await engine.setHistoryWindowDays(updated.historyWindowDays)
                 // The cadence the background request was queued against has just changed, so the
                 // queued request is measuring the old one.
-                BackgroundRefresh.schedule(after: updated.backgroundRefreshSeconds)
+                BackgroundRefresh.schedule(after: updated.backgroundRefreshSeconds, trigger: .settingsChanged)
             }
         }
 
@@ -194,7 +194,7 @@ public final class AppServices {
 
         // Queued at launch as well as on the way out, so a first-ever launch that is never
         // backgrounded cleanly still has a request pending.
-        BackgroundRefresh.schedule(after: settings.refresh.backgroundRefreshSeconds)
+        BackgroundRefresh.schedule(after: settings.refresh.backgroundRefreshSeconds, trigger: .launch)
 
         await coordinator.start()
     }
@@ -331,16 +331,36 @@ public final class AppServices {
         //
         // The cost is that `earliestBeginDate` is measured from the start of the run rather than
         // its end — half a minute against a fifteen-minute cadence.
-        BackgroundRefresh.recordRun()
-        BackgroundRefresh.schedule(after: settings.refresh.backgroundRefreshSeconds)
+        let start = Date.now
+        #if os(iOS)
+        // Whether the window was ever built says whether this is a cold background launch or a
+        // wake of a suspended app — the two fail in different ways.
+        let launch = hasStarted ? "suspended app" : "cold launch"
+        BackgroundRefresh.recordRun(at: start, detail: "\(launch) · \(BackgroundRefresh.systemState())")
+        #else
+        BackgroundRefresh.recordRun(at: start)
+        #endif
+        BackgroundRefresh.schedule(after: settings.refresh.backgroundRefreshSeconds, trigger: .backgroundRun)
 
         await configureEngine()
         await coordinator.refreshAll(trigger: .backgroundTask)
+
+        // Only reached when the system did not take the time back first — and when it did, the
+        // task was cancelled rather than killed, so this still runs and says so.
+        BackgroundRefresh.recordRunEnded(startedAt: start, expired: Task.isCancelled)
     }
 
     /// What background refresh has actually been doing, for the settings screen.
     public var backgroundRefreshDiagnostics: BackgroundRefresh.Diagnostics {
         BackgroundRefresh.diagnostics
+    }
+
+    /// Submits the background request again, on the reader's say-so.
+    ///
+    /// For the settings screen's retry button: after Background App Refresh has been switched on,
+    /// or to find out whether a refusal was a one-off.
+    public func retryBackgroundRefresh() {
+        BackgroundRefresh.schedule(after: settings.refresh.backgroundRefreshSeconds, trigger: .retry)
     }
 
     /// What the automatic cadences have been doing, for the settings screen.
@@ -817,8 +837,8 @@ public final class AppServices {
         failures = report.failures
 
         // The background-refresh diary is written where a *scheduled* wake happens — the
-        // `.backgroundTask` handler on iOS, the activity block on macOS — and not from here. This
-        // used to record any feed cadence that ran while the Mac was not frontmost, which counted
+        // registered `BGTaskScheduler` handler on iOS, the activity block on macOS — and not from
+        // here. This used to record any feed cadence that ran while the Mac was not frontmost, which counted
         // something real but not the same something the iOS figure counts. See
         // ``BackgroundRefresh/recordRun(at:)``.
     }
@@ -895,6 +915,15 @@ public final class AppServices {
             // The phone is the device this matters most on: the process is suspended while the
             // other device is read, so what is on screen when it comes back can be a day old.
             armPositionMerge()
+
+            // Asked again only while the last request stands declined. The usual way out of a
+            // refusal is a trip to Settings and back, and without this the settings screen went
+            // on reporting it until the app next left the screen. An accepted request is left
+            // alone: re-submitting would push its start date back on every activation.
+            if let refusal = BackgroundRefresh.diagnostics.refusal, refusal != .cadencesOff {
+                BackgroundRefresh.schedule(after: settings.refresh.backgroundRefreshSeconds, trigger: .activated)
+            }
+
             enqueueLifecycle { [coordinator] in
                 // `resume` rather than `refreshAll`: it restarts the timers *and* runs whatever was
                 // missed, so the phone catches up on the way in rather than on the next tick.
@@ -902,11 +931,19 @@ public final class AppServices {
             }
         }
 
+        // The switch in Settings, flipped while the app was running or suspended. Logged because
+        // it is the one input to the scheduler that nothing else in the log would show changing.
+        add(UIApplication.backgroundRefreshStatusDidChangeNotification) { [weak self] in
+            guard let self else { return }
+            BackgroundRefresh.log(.statusChanged, detail: BackgroundRefresh.systemState())
+            BackgroundRefresh.schedule(after: settings.refresh.backgroundRefreshSeconds, trigger: .statusChanged)
+        }
+
         add(UIApplication.didEnterBackgroundNotification) { [weak self] in
             guard let self else { return }
             // Asked for here because this is the moment the answer is known: the app is leaving,
             // so whatever the timers would have done next has to be done by the system instead.
-            BackgroundRefresh.schedule(after: settings.refresh.backgroundRefreshSeconds)
+            BackgroundRefresh.schedule(after: settings.refresh.backgroundRefreshSeconds, trigger: .enteredBackground)
 
             // The last fold of the session is written by the timeline from this same notification,
             // and the debounce that would have pushed it does not survive being suspended. This
