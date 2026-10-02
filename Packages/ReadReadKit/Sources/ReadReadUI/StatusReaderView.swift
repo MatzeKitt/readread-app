@@ -89,12 +89,28 @@ struct StatusReaderView: View {
         return false
     }
 
+    /// What sits above the post: the whole way up the conversation once it has loaded, and the post
+    /// it replies to or quotes, which ingest already stored.
+    ///
+    /// A stored *parent* gives way to the loaded thread entirely rather than being merged with it:
+    /// the thread's last ancestor *is* that parent, fresher, and when the thread comes back with no
+    /// ancestors the parent has been deleted since — the server's answer wins. A stored *quote*
+    /// stays, directly above the post: a conversation says nothing about what a post quotes.
     @ViewBuilder
     private var ancestors: some View {
+        let isThreadLoaded: Bool = {
+            if case .loaded = thread.state { return true }
+            return false
+        }()
+
         if case .loaded(let ancestors, _) = thread.state {
             ForEach(ancestors) { ancestor in
                 StatusCard(status: ancestor, emphasis: .context)
             }
+        }
+
+        if let stored = RenderableStatusCache.parent(for: item), item.replyParentIsQuote || !isThreadLoaded {
+            StatusCard(status: stored, emphasis: .context)
         }
     }
 

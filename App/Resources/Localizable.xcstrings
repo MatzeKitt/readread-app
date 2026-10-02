@@ -1323,6 +1323,17 @@
         }
       }
     },
+    "In reply to %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antwort auf %@"
+          }
+        }
+      }
+    },
     "In the background": {
       "extractionState": "manual",
       "localizations": {
@@ -2320,6 +2331,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nicht gelistet"
+          }
+        }
+      }
+    },
+    "Quoting %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zitat von %@"
           }
         }
       }

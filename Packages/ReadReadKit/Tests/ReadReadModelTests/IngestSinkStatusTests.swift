@@ -212,4 +212,58 @@ struct IngestSinkStatusTests {
 
         #expect(try stored("k", in: container)?.isFavourited == false)
     }
+
+    // MARK: - Reply parents
+
+    private let parent = ReplyParent(
+        authorName: "Grace",
+        authorHandle: "grace@example.social",
+        avatarURLString: "https://files.example/g.png",
+        text: "Tabs are better"
+    )
+
+    private func reply(id: String, lookup: ReplyParentLookup?) -> IngestedItem {
+        var reply = item(id: id, engagement: StatusEngagement(inReplyToStatusID: "5"))
+        reply.replyParent = lookup
+        return reply
+    }
+
+    @Test("A reply stores the post it answers")
+    func replyParentIsStored() async throws {
+        let container = try ReadReadStore.inMemoryContainer()
+        let sink = SwiftDataIngestSink(modelContainer: container)
+
+        try await commit([reply(id: "r", lookup: .found(parent, payload: Data("{}".utf8)))], to: sink)
+
+        let row = try stored("r", in: container)
+        #expect(row?.replyParent == parent)
+        #expect(row?.replyParentPayload == Data("{}".utf8))
+    }
+
+    /// A re-ingest that ran out of time before it could look the parent up again says nothing about
+    /// the parent. Taking that as "none" would blank a parent the row already had.
+    @Test("A re-ingest that did not look keeps the parent already stored")
+    func replyParentSurvivesAnUnlookedReingest() async throws {
+        let container = try ReadReadStore.inMemoryContainer()
+        let sink = SwiftDataIngestSink(modelContainer: container)
+
+        try await commit([reply(id: "s", lookup: .found(parent, payload: nil))], to: sink)
+        try await commit([reply(id: "s", lookup: nil)], to: sink)
+
+        #expect(try stored("s", in: container)?.replyParent == parent)
+    }
+
+    /// Empty rather than nil, which is what keeps `ReplyParentBackfill` from asking for a deleted
+    /// post after every refresh.
+    @Test("A parent that is gone is recorded as an answer")
+    func goneParentStoresAnAnswer() async throws {
+        let container = try ReadReadStore.inMemoryContainer()
+        let sink = SwiftDataIngestSink(modelContainer: container)
+
+        try await commit([reply(id: "t", lookup: .unavailable)], to: sink)
+
+        let row = try stored("t", in: container)
+        #expect(row?.replyParentAuthorName == "")
+        #expect(row?.replyParent == nil)
+    }
 }

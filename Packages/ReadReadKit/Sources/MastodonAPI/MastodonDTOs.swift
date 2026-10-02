@@ -69,6 +69,11 @@ public final class MastodonStatus: Codable, Sendable {
     public let editedAt: Date?
     public let language: String?
 
+    /// The post this one quotes, when it is a quote post (Mastodon 4.5 and later).
+    ///
+    /// Nil on an instance that predates quotes, and on every post that quotes nothing.
+    public let quote: MastodonQuote?
+
     // MARK: Derived
 
     /// The status whose content should be displayed — the boosted one, if this is a boost.
@@ -78,6 +83,27 @@ public final class MastodonStatus: Codable, Sendable {
 
     /// Who boosted, when this is a boost.
     public var boostedBy: MastodonAccount? { reblog == nil ? nil : account }
+}
+
+/// A quote post's link to the post it quotes.
+///
+/// The quoted post comes whole, inside the quoting one, so showing it costs no request. Only when
+/// its author has allowed the quote, though: in every other ``state`` — still pending, refused,
+/// revoked, deleted, or hidden by a block or a mute — ``quotedStatus`` is null, and the quoting post's
+/// own "RE: <link>" paragraph is all there is to show.
+public struct MastodonQuote: Codable, Sendable {
+
+    /// `accepted`, `pending`, `rejected`, `revoked`, `deleted`, `unauthorized`, or one of the
+    /// `blocked_…` and `muted_…` states. A string rather than an enum, so a state added by a later
+    /// version decodes instead of failing the whole timeline page.
+    public let state: String
+
+    public let quotedStatus: MastodonStatus?
+
+    /// The quoted post, when it may be shown.
+    public var shownStatus: MastodonStatus? {
+        state == "accepted" ? quotedStatus : nil
+    }
 }
 
 /// A status's conversation: what came before it, and what came after.

@@ -1,3 +1,4 @@
+import MastodonAPI
 import ReadReadModel
 import SwiftUI
 
@@ -61,6 +62,16 @@ struct ItemRow: View {
         // hand and is usually a line, but nothing stops it being an essay.
         guard !hasContentWarning else {
             return StatusTextCache.clipped(AttributedString(item.title))
+        }
+        // Without the "RE: <link>" line when the quoted post is drawn above — the line is only
+        // there for apps that cannot draw it. Cached under its own key, so a row that gains its
+        // quote while on screen does not keep the parse that still had the line in it.
+        if item.replyParentIsQuote {
+            return StatusTextCache.shared.text(
+                id: item.id + "#quoted",
+                html: QuoteFallback.removing(from: item.contentHTML),
+                plain: item.title
+            )
         }
         return StatusTextCache.shared.text(id: item.id, html: item.contentHTML, plain: item.title)
     }
@@ -140,6 +151,17 @@ struct ItemRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
+            // Above the reply, where the conversation puts it: the reply is the answer, and this is
+            // the question it answers.
+            if item.kind == .status, let parent = item.replyParent {
+                ReplyParentPreview(
+                    parent: parent,
+                    headingScale: headingScale,
+                    bodyScale: bodyScale,
+                    lineHeight: lineHeight
+                )
+            }
+
             switch item.kind {
             case .status: statusHeader
             case .article: articleHeader
@@ -432,6 +454,94 @@ extension CachedItem {
     /// menu names the post's links, and their text is part of what the warning hides.
     var isBehindContentWarning: Bool {
         kind == .status && excerpt.isEmpty
+    }
+}
+
+/// The post a reply answers or a quote post quotes, set small above it in its row.
+///
+/// Drawn as the head of a thread rather than as a quoted box: a smaller avatar in the reply's
+/// avatar column, with a line running down from it to the reply's own. That is the convention
+/// Mastodon's web interface and the clients that follow it use for a conversation, so it reads as
+/// "this answers that" without a word of explanation, and it keeps the parent's text in the same
+/// column as the reply's name.
+///
+/// No fill behind it on purpose. A selected row is filled with ``SurfaceFill``, and a box of its
+/// own inside that would be a grey on a grey.
+struct ReplyParentPreview: View {
+
+    let parent: ReplyParent
+    var headingScale: TextScale
+    var bodyScale: TextScale
+    var lineHeight: Double
+
+    /// The width of the reply's avatar, which this column lines up with. See `statusHeader`.
+    private static let avatarColumnWidth: CGFloat = 36
+
+    /// Fewer lines than the reply gets. It is context for the post underneath, not a post to read
+    /// in the list — the reading pane shows it whole.
+    private var textLineLimit: Int {
+        #if os(macOS)
+        return 2
+        #else
+        return 3
+        #endif
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            VStack(spacing: 4) {
+                SourceIcon(
+                    urlString: parent.avatarURLString,
+                    fallbackSystemImage: "person.crop.circle",
+                    size: 22
+                )
+                .clipShape(.rect(cornerRadius: 6))
+
+                // Runs down to the reply's avatar, which is what ties the two posts together.
+                Capsule()
+                    .fill(.quaternary)
+                    .frame(width: 2)
+                    .frame(maxHeight: .infinity)
+            }
+            .frame(width: Self.avatarColumnWidth)
+
+            // The post's own `.subheadline`, not a size below it. The smaller styles are 12 and 13
+            // points in this app's table (see `ScaledFont`), and both read as too small for text
+            // that is meant to be read; a step between them was not even visible. What marks this
+            // as context instead is the colour, the smaller avatar and the shorter line limit.
+            VStack(alignment: .leading, spacing: 1) {
+                Text(parent.authorName)
+                    .scaledFont(.subheadline, weight: .semibold, scale: headingScale)
+                    .lineLimit(1)
+                    // Said out loud, because the line tying the two posts together is not: heard
+                    // in order, a bare name and its text would read as a post of its own.
+                    .accessibilityLabel(
+                        parent.isQuote
+                            ? Text("Quoting \(parent.authorName)")
+                            : Text("In reply to \(parent.authorName)")
+                    )
+
+                if parent.hasContentWarning {
+                    // The warning, never the post: the parent's author hid it, and somebody else's
+                    // reply is no reason to show it.
+                    Label(parent.text, systemImage: "eye.slash")
+                        .scaledFont(.subheadline, scale: bodyScale, lineHeight: lineHeight)
+                        .lineLimit(textLineLimit)
+                } else if !parent.text.isEmpty {
+                    Text(parent.text)
+                        .scaledFont(.subheadline, scale: bodyScale, lineHeight: lineHeight)
+                        .lineLimit(textLineLimit)
+                }
+            }
+            .foregroundStyle(.secondary)
+            .padding(.bottom, 2)
+        }
+        // So the line takes the height the text gives the row, rather than asking the row for all
+        // the height there is.
+        .fixedSize(horizontal: false, vertical: true)
+        // Labelled rather than combined into one element. Restructuring what VoiceOver sees inside
+        // a timeline row is not something that can be checked from here, and the rows that do
+        // combine each do so because a dump showed them breaking.
     }
 }
 

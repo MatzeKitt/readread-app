@@ -213,6 +213,25 @@ public actor MastodonClient {
         )
     }
 
+    /// Fetches one status by its id on this instance.
+    ///
+    /// `GET /api/v1/statuses/:id`. What a reply's parent is fetched with: one status rather than a
+    /// whole context, because the row shows the post being answered and nothing further up.
+    ///
+    /// - Returns: Nil when the instance answers 404 or 410, which is how it says the post was
+    ///   deleted or that this account is not allowed to see it — a fact about the post, and not a
+    ///   failure worth retrying. Every other error is thrown.
+    public func status(_ id: MastodonStatusID) async throws -> MastodonStatus? {
+        do {
+            return try await get("api/v1/statuses/\(id.rawValue)", query: [], as: MastodonStatus.self)
+        } catch let error as HTTPError {
+            if case .status(let code, _) = error, code == 404 || code == 410 {
+                return nil
+            }
+            throw error
+        }
+    }
+
     // MARK: - Favouriting and boosting
 
     /// Favourites a status, or takes it back.

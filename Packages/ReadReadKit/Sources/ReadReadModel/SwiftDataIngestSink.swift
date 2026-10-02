@@ -242,10 +242,16 @@ public actor SwiftDataIngestSink: IngestSink {
             if item.kind == .status {
                 existing.linkCard = item.linkCard
             }
+            // Only when the planner actually looked. Nil is "did not ask", and overwriting a
+            // parent already found with that would blank it on every re-ingest that ran short of
+            // time.
+            if let lookup = item.replyParent {
+                existing.record(lookup)
+            }
             return
         }
 
-        modelContext.insert(CachedItem(
+        let inserted = CachedItem(
             id: item.id,
             sourceID: item.sourceID,
             accountID: item.accountID,
@@ -277,7 +283,11 @@ public actor SwiftDataIngestSink: IngestSink {
             inReplyToStatusID: item.engagement?.inReplyToStatusID,
             attachments: item.attachments,
             mastodonPayload: item.mastodonPayload
-        ))
+        )
+        if let lookup = item.replyParent {
+            inserted.record(lookup)
+        }
+        modelContext.insert(inserted)
     }
 
     /// The title of a source, memoised for the duration of the run.

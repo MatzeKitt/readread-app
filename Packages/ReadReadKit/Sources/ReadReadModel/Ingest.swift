@@ -50,6 +50,12 @@ public struct IngestedItem: Sendable, Equatable {
     /// Replies, boosts and favourites for a status. All zero for an article.
     public var engagement: StatusEngagement?
 
+    /// The post a reply answers, when the planner went and found it.
+    ///
+    /// Nil means *not looked up* — not a reply, or a lookup that failed in a way worth retrying —
+    /// and the sink leaves whatever the row already holds. See ``ReplyParentLookup``.
+    public var replyParent: ReplyParentLookup?
+
     /// The provider's own id for this item, in the form its cursor uses.
     ///
     /// Kept separate from `id` because `id` is namespaced for the local store while the cursor has
@@ -78,6 +84,7 @@ public struct IngestedItem: Sendable, Equatable {
         mastodonPayload: Data? = nil,
         linkCard: LinkCard? = nil,
         engagement: StatusEngagement? = nil,
+        replyParent: ReplyParentLookup? = nil,
         providerID: String
     ) {
         self.id = id
@@ -101,6 +108,7 @@ public struct IngestedItem: Sendable, Equatable {
         self.mastodonPayload = mastodonPayload
         self.linkCard = linkCard
         self.engagement = engagement
+        self.replyParent = replyParent
         self.providerID = providerID
     }
 }

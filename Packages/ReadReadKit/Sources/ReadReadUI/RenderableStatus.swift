@@ -109,6 +109,9 @@ enum RenderableStatusCache {
     private static var cachedID: String?
     private static var cached: RenderableStatus?
 
+    private static var cachedParentID: String?
+    private static var cachedParent: RenderableStatus?
+
     static func status(for item: CachedItem) -> RenderableStatus {
         if let cached, cachedID == item.id { return cached }
 
@@ -116,6 +119,25 @@ enum RenderableStatusCache {
         cachedID = item.id
         cached = status
         return status
+    }
+
+    /// The post the one being read replies to or quotes, from the copy ingest stored beside it.
+    ///
+    /// Cached for the same reason as ``status(for:)`` — it is a decode, and the pane asks on every
+    /// body evaluation — and keyed by the *reply's* id, because the reply is what the pane is
+    /// showing. Nil when the post is not a reply, or its parent was not found.
+    static func parent(for item: CachedItem) -> RenderableStatus? {
+        // Not cached while there is nothing to decode: the backfill can fill the payload in while
+        // the post is on screen, and a cached nil would hide the parent until another post had
+        // been opened in between.
+        guard let data = item.replyParentPayload else { return nil }
+        if cachedParentID == item.id { return cachedParent }
+
+        let parent = (try? JSONDecoder.mastodon.decode(MastodonStatus.self, from: data))
+            .map { RenderableStatus($0) }
+        cachedParentID = item.id
+        cachedParent = parent
+        return parent
     }
 }
 
@@ -138,6 +160,13 @@ extension RenderableStatus {
             // The store's own id, not the status's: this is what the timeline selects by, and a
             // mismatch would break scrolling to the focused post.
             id = item.id
+            // The quoted post is drawn above, so the "RE: <link>" line written for apps that cannot
+            // draw it goes. Only here, for the stored post: a post in a loaded thread has no quote
+            // card, and its line is the only way to the post it quotes.
+            if item.replyParentIsQuote {
+                contentHTML = QuoteFallback.removing(from: contentHTML)
+                plainText = HTMLText.plainText(from: contentHTML)
+            }
             return
         }
 

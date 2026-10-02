@@ -116,7 +116,10 @@ public struct MastodonIngestPlanner: Sendable {
                 fresh.append(status)
             }
 
-            let items = fresh.map(map)
+            let parents = await replyParents(for: fresh, onPage: page.statuses, budget: budget)
+            let items = fresh.map { status in
+                map(status, replyParent: ReplyParentResolver.contextLookup(for: status, replyParents: parents))
+            }
             let nextContinuation = page.nextMaxID ?? ""
 
             let lateArrivals = try await sink.commit(
@@ -151,10 +154,51 @@ public struct MastodonIngestPlanner: Sendable {
         return outcome
     }
 
+    // MARK: - Reply parents
+
+    /// The posts this page's replies answer, so each reply is written with its parent already on it.
+    ///
+    /// Before the commit rather than after it, so a reply never reaches the timeline without the
+    /// post above it and then grows one — see ``ReplyParent``. The page itself is searched first,
+    /// because a thread posted in parts arrives as replies to each other in the same page; that
+    /// includes the statuses past the stop line, which are already stored and still in hand.
+    ///
+    /// Never throws. A parent that could not be fetched leaves its reply unanswered, the reply is
+    /// written all the same, and `ReplyParentBackfill` asks again on a later run.
+    private func replyParents(
+        for statuses: [MastodonStatus],
+        onPage page: [MastodonStatus],
+        budget: IngestBudget
+    ) async -> [String: ReplyParentLookup] {
+        // Not for a post whose quote will take the slot: its parent would be fetched to be thrown
+        // away.
+        let parentIDs = Set(
+            statuses.filter(ReplyParentResolver.needsReplyParent).compactMap { $0.displayStatus.inReplyToId }
+        )
+        guard !parentIDs.isEmpty else { return [:] }
+
+        var known: [String: MastodonStatus] = [:]
+        for status in page {
+            // The displayed status, since that is what a reply names: nobody replies to the act of
+            // boosting.
+            let display = status.displayStatus
+            known[display.id.rawValue] = display
+        }
+
+        return await ReplyParentResolver(client: client).resolve(
+            parentIDs,
+            known: known,
+            hasTimeRemaining: budget.hasTimeRemaining
+        )
+    }
+
     // MARK: - Mapping
 
     /// Maps a status onto the store's shape.
-    func map(_ status: MastodonStatus) -> IngestedItem {
+    ///
+    /// - Parameter replyParent: What to show above the post — the post it quotes or replies to —
+    ///   or nil when nothing looked. See ``IngestedItem/replyParent``.
+    func map(_ status: MastodonStatus, replyParent: ReplyParentLookup? = nil) -> IngestedItem {
         // A boost's own timestamp and id place it in the timeline, but the content and author
         // shown belong to the status it wraps.
         let display = status.displayStatus
@@ -223,6 +267,7 @@ public struct MastodonIngestPlanner: Sendable {
                 isFavourited: display.favourited,
                 isReblogged: display.reblogged
             ),
+            replyParent: replyParent,
             providerID: status.id.rawValue
         )
     }

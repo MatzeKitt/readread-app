@@ -414,7 +414,16 @@ public actor RefreshEngine {
         case .mastodon(let accountID, let client):
             let planner = MastodonIngestPlanner(client: client, sink: sink, accountID: accountID)
             try await planner.refreshSource()
-            return try await planner.ingest(budget: budget, historyWindowDays: historyWindowDays)
+            let outcome = try await planner.ingest(budget: budget, historyWindowDays: historyWindowDays)
+            // After the walk, which looks up the parents of the replies it writes, so this only
+            // ever sees the ones it could not: replies stored before parents were looked up, and
+            // lookups that failed. Housekeeping, so it can never fail the refresh it rides on.
+            _ = try? await ReplyParentBackfill(modelContainer: container).fill(
+                accountID: accountID,
+                client: client,
+                hasTimeRemaining: budget.hasTimeRemaining
+            )
+            return outcome
         }
     }
 

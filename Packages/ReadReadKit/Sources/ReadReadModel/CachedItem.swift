@@ -223,6 +223,36 @@ public final class CachedItem {
     /// anything — it can offer the thread, or not, without a speculative round trip.
     public var inReplyToStatusID: String?
 
+    /// The post this one replies to or quotes, as scalar columns. See ``ReplyParent``.
+    ///
+    /// Columns rather than one encoded value, for the reason the link card's are: the timeline draws
+    /// this above every reply, and a row must not decode JSON to draw itself. Rebuilt on read by
+    /// ``replyParent``.
+    ///
+    /// ``replyParentAuthorName`` carries the same three states as ``cardURLString``. Nil means *not
+    /// looked up* — a reply that arrived before this existed, or one whose lookup failed in a way
+    /// worth retrying, or a quote post stored before quotes were read — and `ReplyParentBackfill`
+    /// goes looking for those. An empty string means looked up and there is nothing to show: the
+    /// post was deleted, or this account may not see it. A name means there is one.
+    ///
+    /// The names say *reply* because replies came first; a quoted post lives in the same columns,
+    /// told apart by ``replyParentIsQuote``. One slot rather than two because a row shows one post
+    /// above it, and a post that both replies and quotes shows the quote — see
+    /// `ReplyParentResolver.contextLookup`.
+    public var replyParentAuthorName: String?
+    public var replyParentAuthorHandle: String?
+    public var replyParentAvatarURLString: String?
+    public var replyParentText: String?
+    public var replyParentHasContentWarning: Bool = false
+    public var replyParentIsQuote: Bool = false
+
+    /// The parent's whole status, JSON-encoded, for the reading pane.
+    ///
+    /// Opaque `Data` for the reason ``mastodonPayload`` is: only the pane reads it, it is never
+    /// queried, and the pane wants the parent's media, poll and emoji, which the columns above do
+    /// not carry.
+    public var replyParentPayload: Data?
+
     /// The article extracted from the item's own page, when the feed is set to load full pages.
     ///
     /// Cached on the item rather than fetched per view because the fetch is the expensive part —
@@ -367,6 +397,48 @@ public final class CachedItem {
             cardTitle = newValue?.title
             cardSummary = newValue?.summary
             cardImageURLString = newValue?.imageURLString
+        }
+    }
+
+    /// The post this one replies to or quotes, or nil when there is none to show — or nothing has
+    /// looked.
+    ///
+    /// Both kinds of absence read the same here, as with ``linkCard``: the row has nothing to draw
+    /// either way. Use ``record(_:)`` to write, which is what tells the two apart.
+    public var replyParent: ReplyParent? {
+        guard let replyParentAuthorName, !replyParentAuthorName.isEmpty else { return nil }
+        return ReplyParent(
+            authorName: replyParentAuthorName,
+            authorHandle: replyParentAuthorHandle,
+            avatarURLString: replyParentAvatarURLString,
+            text: replyParentText ?? "",
+            hasContentWarning: replyParentHasContentWarning,
+            isQuote: replyParentIsQuote
+        )
+    }
+
+    /// Writes what a parent lookup found.
+    ///
+    /// ``ReplyParentLookup/unavailable`` writes the empty-string sentinel, which records the row as
+    /// *looked up, nothing to show* and keeps it out of the backfill's search for good.
+    public func record(_ lookup: ReplyParentLookup) {
+        switch lookup {
+        case .found(let parent, let payload):
+            replyParentAuthorName = parent.authorName
+            replyParentAuthorHandle = parent.authorHandle
+            replyParentAvatarURLString = parent.avatarURLString
+            replyParentText = parent.text
+            replyParentHasContentWarning = parent.hasContentWarning
+            replyParentIsQuote = parent.isQuote
+            replyParentPayload = payload
+        case .unavailable:
+            replyParentAuthorName = ""
+            replyParentAuthorHandle = nil
+            replyParentAvatarURLString = nil
+            replyParentText = nil
+            replyParentHasContentWarning = false
+            replyParentIsQuote = false
+            replyParentPayload = nil
         }
     }
 }
