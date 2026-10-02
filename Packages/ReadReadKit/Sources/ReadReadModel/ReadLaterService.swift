@@ -35,6 +35,21 @@ public enum ReadLaterService {
         return Set(try context.fetch(descriptor).map(\.itemID))
     }
 
+    /// Entries matching a search, for the Read Later list's `@Query`.
+    ///
+    /// The same shape as ``ScopeQuery/searchPredicate(for:matching:)`` — every term, as a plain
+    /// `contains` over text folded on the way in — so a search means the same thing in Read Later
+    /// as in every other list.
+    public static func searchPredicate(matching query: SearchQuery) -> Predicate<ReadLaterEntry> {
+        // Seeded with the first term rather than with an always-true predicate, which gives the
+        // store a constant to generate SQL for and nothing to gain from it. `terms` is never empty.
+        let first = query.terms[0]
+        let base = #Predicate<ReadLaterEntry> { $0.searchText?.contains(first) == true }
+        return query.terms.dropFirst().reduce(base) { narrowed, term in
+            #Predicate<ReadLaterEntry> { narrowed.evaluate($0) && $0.searchText?.contains(term) == true }
+        }
+    }
+
     /// Saves an item, or updates the snapshot if it is already saved.
     ///
     /// Re-saving deliberately refreshes the snapshot rather than being a no-op: the cached item may
@@ -68,6 +83,7 @@ public enum ReadLaterService {
             // body is not a new decision to save it. Overwriting it would reshuffle the list under
             // the reader every time an item was re-ingested.
             if archiveContent { existing.archivedHTML = item.contentHTML }
+            existing.searchText = item.searchText ?? SearchText.make(for: item)
             return existing
         }
 

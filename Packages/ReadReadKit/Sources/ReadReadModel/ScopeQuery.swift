@@ -161,6 +161,48 @@ public enum ScopeQuery {
         }
     }
 
+    /// Items in a scope that match a search.
+    ///
+    /// The scope's own ``displayPredicate(for:)``, narrowed — so a search can only ever find what
+    /// the list it replaces would have shown. A search that turned up filtered items, or a
+    /// switched-off account's, would be the one place in the app they leak back out; searching
+    /// Filtered Items, conversely, searches only what is hidden.
+    public static func searchPredicate(for scope: ScopeID, matching query: SearchQuery) -> Predicate<CachedItem> {
+        narrowing(displayPredicate(for: scope), to: query)
+    }
+
+    /// ``adjacentPredicate(for:bound:isNewer:)`` within a search's results, so that stepping to
+    /// the next item from a result steps to the next *result* rather than wandering back into the
+    /// whole scope.
+    public static func adjacentPredicate(
+        for scope: ScopeID,
+        matching query: SearchQuery,
+        bound: String,
+        isNewer: Bool
+    ) -> Predicate<CachedItem>? {
+        adjacentPredicate(for: scope, bound: bound, isNewer: isNewer).map { narrowing($0, to: query) }
+    }
+
+    /// Adds one `contains` per term to a predicate, all of which must hold.
+    ///
+    /// Composed through `evaluate` rather than written out per scope like everything above, and
+    /// this is the case where composing is safe: the scope's predicate is *kept whole* and only
+    /// ever added to, so no scope can lose its own terms on the way — which is what went wrong with
+    /// replacing one predicate by another. `ScopeQueryTests` pins it anyway, for each scope. A
+    /// per-scope switch would also have needed one case per number of terms, since a `#Predicate`
+    /// cannot loop.
+    ///
+    /// Optional chaining rather than `?? ""`. The coalescing form compiles, and the store then
+    /// throws on it at fetch time as SQL it cannot generate.
+    private static func narrowing(
+        _ base: Predicate<CachedItem>,
+        to query: SearchQuery
+    ) -> Predicate<CachedItem> {
+        query.terms.reduce(base) { narrowed, term in
+            #Predicate<CachedItem> { narrowed.evaluate($0) && $0.searchText?.contains(term) == true }
+        }
+    }
+
     /// Items in a scope strictly above or below a sort key.
     ///
     /// Used to find the item next to another one. Written here, as another exhaustive switch,

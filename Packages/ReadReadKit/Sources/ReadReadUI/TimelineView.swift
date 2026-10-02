@@ -690,22 +690,58 @@ struct TimelineView: View {
     let scope: ScopeID
     @Binding var selectedItemID: String?
     let counts: ThresholdCounts
+
+    /// What is in the search field, as typed.
+    @Binding var searchText: String
+
+    /// The search that is actually run: ``searchText`` once typing pauses, or nil with nothing to
+    /// search for. Settled by `RootView`, which also hands it to the reading pane.
+    let searchQuery: SearchQuery?
+
     /// Called to hand keyboard focus to another column.
     let moveFocus: (FocusedColumn) -> Void
 
     @Environment(\.modelContext) private var modelContext
+
+    /// Whether the search field has the keyboard, so ⌘F can give it the keyboard.
+    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         Group {
             if case .readLater = scope {
                 // Read Later renders from `ReadLaterEntry`, not `CachedItem`, because entries are
                 // self-contained snapshots that outlive cache pruning.
-                ReadLaterListView(selectedItemID: $selectedItemID, moveFocus: moveFocus)
+                //
+                // Keyed on the query, because the list's `@Query` is built in its initialiser and a
+                // new predicate is not a new view. The same holds for the two lists below.
+                ReadLaterListView(
+                    selectedItemID: $selectedItemID,
+                    searchQuery: searchQuery,
+                    moveFocus: moveFocus
+                )
+                .id(searchQuery)
             } else if case .filtered = scope {
                 // Its own view rather than the timeline with an inverted predicate: every row says
                 // *which* rule hid it, which is the only question the list exists to answer, and
                 // there is no reading position to restore or report here.
-                FilteredItemsView(selectedItemID: $selectedItemID, moveFocus: moveFocus)
+                FilteredItemsView(
+                    selectedItemID: $selectedItemID,
+                    searchQuery: searchQuery,
+                    moveFocus: moveFocus
+                )
+                .id(searchQuery)
+            } else if let searchQuery {
+                // In place of the timeline, never narrowing it: the timeline's top row is the
+                // reading position, and a narrowed list would write an old result down as where the
+                // reader is. See `SearchResultsView`. Leaving this branch brings the timeline back
+                // as a new view, which restores its position like any change of scope.
+                SearchResultsView(
+                    scope: scope,
+                    query: searchQuery,
+                    selectedItemID: $selectedItemID,
+                    moveFocus: moveFocus
+                )
+                .id(searchQuery)
             } else {
                 TimelineQueryHost(
                     scope: scope,
@@ -738,6 +774,22 @@ struct TimelineView: View {
             }
         }
         .navigationTitle(scopeTitle)
+        // Here, on the column's root, unlike the toolbars below: the field has to outlive the
+        // branch it chooses between, or typing the first letter would swap the list out from under
+        // the field being typed into. It searches whatever the sidebar has selected.
+        .searchable(text: $searchText)
+        .searchFocused($isSearchFocused)
+        // ⌘F, which a `searchable` field does not answer to on its own: checked on macOS 26 against
+        // a split view like this one, where the key left focus on the list and the typing that
+        // followed went nowhere. The standard Edit ▸ Find item is still in the menu and does not
+        // take the key from this — it only acts on text the focused view can search, and the list
+        // is not one. Hidden, because the field is already on screen to be clicked; the key is the
+        // only thing this adds.
+        .background {
+            Button("Search") { isSearchFocused = true }
+                .keyboardShortcut("f", modifiers: .command)
+                .hidden()
+        }
         // No `.toolbar` here, and that is the fix for a real bug rather than a tidying.
         //
         // Refresh used to be declared on this view — the column's root — so that one declaration
@@ -1155,38 +1207,14 @@ private struct TimelineList: View {
                             .tint(.orange)
                         }
                         .contextMenu {
-                            // First, because for a post it is the thing most often wanted from
-                            // this menu, and because Read Later is also reachable by swiping.
-                            StatusActionMenu(
+                            // Shared with the search results, which show the same rows in the
+                            // same column. See `ItemActionsMenu`.
+                            ItemActionsMenu(
                                 item: item,
-                                accounts: StatusInteractions.Actor.menuOrder(
-                                    for: accounts,
-                                    owner: item.accountID
-                                )
+                                accounts: accounts,
+                                isSaved: isSaved,
+                                toggleReadLater: { toggleReadLater(item) }
                             )
-
-                            if item.kind == .status, !accounts.isEmpty {
-                                Divider()
-                            }
-
-                            Button(
-                                isSaved ? "Remove from Read Later" : "Read Later",
-                                systemImage: isSaved ? "bookmark.slash" : "bookmark"
-                            ) {
-                                toggleReadLater(item)
-                            }
-
-                            if let url = item.url {
-                                Divider()
-                                Link("Open in Browser", destination: url)
-                                // Beside Open in Browser because it is the other half of the same
-                                // question — this link, but taken somewhere else rather than
-                                // followed here. Both representations go on the pasteboard; see
-                                // `LinkActions.copy(_:)`.
-                                Button("Copy Link", systemImage: "link") {
-                                    LinkActions.copy(url)
-                                }
-                            }
 
                             if isLateArrivalList {
                                 Divider()

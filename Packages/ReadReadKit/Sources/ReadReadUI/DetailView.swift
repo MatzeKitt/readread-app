@@ -17,6 +17,9 @@ struct DetailView: View {
     /// rather than the whole store.
     let scope: ScopeID
 
+    /// The search the item was picked from, if any, so "next" is the next result.
+    let searchQuery: SearchQuery?
+
     let moveFocus: (FocusedColumn) -> Void
 
     @Environment(\.modelContext) private var modelContext
@@ -50,7 +53,7 @@ struct DetailView: View {
         return content(selection)
             .toolbar { itemActions(selection) }
             #if !os(macOS)
-            .task(id: itemID) {
+            .task(id: NeighbourKey(itemID: itemID, searchQuery: searchQuery)) {
                 previousItemID = neighbour(.newer)
                 nextItemID = neighbour(.older)
             }
@@ -206,11 +209,19 @@ struct DetailView: View {
         return try? modelContext.fetch(descriptor).first
     }
 
+    /// What the neighbours depend on: the item, and the results it was picked from. Starting or
+    /// clearing a search changes which item is next without the selection moving.
+    private struct NeighbourKey: Equatable {
+        let itemID: String?
+        let searchQuery: SearchQuery?
+    }
+
     private func neighbour(_ direction: TimelineNavigator.Direction) -> String? {
         guard let itemID else { return nil }
         return try? TimelineNavigator.adjacentItemID(
             to: itemID,
             in: scope,
+            matching: searchQuery,
             direction: direction,
             context: modelContext
         )
@@ -301,7 +312,7 @@ struct DetailView: View {
 #Preview {
     @Previewable @State var itemID: String?
 
-    DetailView(itemID: $itemID, scope: .all, moveFocus: { _ in })
+    DetailView(itemID: $itemID, scope: .all, searchQuery: nil, moveFocus: { _ in })
         .modelContainer(FixtureData.previewContainer())
 }
 #endif

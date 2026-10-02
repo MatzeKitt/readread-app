@@ -187,6 +187,10 @@ public struct MastodonIngestPlanner: Sendable {
             urlString: display.url ?? display.uri,
             contentHTML: display.content,
             excerpt: hasWarning ? "" : HTMLText.truncating(plainText, to: 320),
+            // The post's own words even behind a warning. The list still shows only the warning;
+            // this only decides whether a search can find the post, and someone searching for its
+            // words is looking for exactly this one.
+            bodyText: plainText,
             publishedAt: status.createdAt,
             sortKey: SortKey(millis: millis, id: itemID),
             ingestKey: SortKey(millis: millis, id: itemID),

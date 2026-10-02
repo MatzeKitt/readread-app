@@ -19,6 +19,17 @@ public struct IngestedItem: Sendable, Equatable {
     public var urlString: String?
     public var contentHTML: String
     public var excerpt: String
+
+    /// The whole body as plain text, when the planner has already stripped it.
+    ///
+    /// Carried so the sink can build ``CachedItem/searchText`` without stripping the same HTML a
+    /// second time: both planners strip the body for the excerpt anyway, and stripping is the
+    /// expensive part. Nil makes the sink strip it itself, which is what a test that builds an
+    /// item by hand gets.
+    ///
+    /// It must be `HTMLText.plainText(from:)` of ``contentHTML`` and nothing else, or an item's
+    /// searchable text would depend on which path wrote it.
+    public var bodyText: String?
     public var publishedAt: Date
     public var sortKey: SortKey
     public var ingestKey: SortKey
@@ -57,6 +68,7 @@ public struct IngestedItem: Sendable, Equatable {
         urlString: String? = nil,
         contentHTML: String = "",
         excerpt: String = "",
+        bodyText: String? = nil,
         publishedAt: Date,
         sortKey: SortKey,
         ingestKey: SortKey,
@@ -79,6 +91,7 @@ public struct IngestedItem: Sendable, Equatable {
         self.urlString = urlString
         self.contentHTML = contentHTML
         self.excerpt = excerpt
+        self.bodyText = bodyText
         self.publishedAt = publishedAt
         self.sortKey = sortKey
         self.ingestKey = ingestKey

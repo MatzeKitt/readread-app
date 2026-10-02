@@ -1,4 +1,5 @@
 import Foundation
+import ReadReadSupport
 import SwiftData
 
 /// An item marked for reading later.
@@ -42,6 +43,18 @@ public final class ReadLaterEntry {
     /// Offline snapshot of the article body, when snapshotting is enabled.
     public var archivedHTML: String?
 
+    /// What a search of Read Later matches against, folded. See ``SearchText``.
+    ///
+    /// Taken from the cached item's own ``CachedItem/searchText`` when the entry is saved on this
+    /// device, so the whole body is searchable whether or not it was archived. An entry that
+    /// arrived by sync has only what the snapshot carries — its archived body if there is one, its
+    /// excerpt otherwise — which is all this device has ever seen of it.
+    ///
+    /// Local and derived: never synced, and rebuilt by ``ReadLaterService`` whenever the snapshot
+    /// is. Nil means *not derived yet*, which is an entry saved before the column existed;
+    /// `SearchTextBackfill` fills those in.
+    public var searchText: String?
+
     public init(
         itemID: String,
         sourceID: String,
@@ -72,6 +85,12 @@ public final class ReadLaterEntry {
         sortKeyRaw = sortKey.rawValue
         self.addedAt = addedAt
         self.archivedHTML = archivedHTML
+        searchText = Self.searchText(
+            title: title,
+            authorName: authorName,
+            excerpt: excerpt,
+            archivedHTML: archivedHTML
+        )
     }
 
     /// Snapshots a cached item into a durable Read Later entry.
@@ -97,6 +116,22 @@ public final class ReadLaterEntry {
             publishedAt: item.publishedAt,
             sortKey: item.sortKey,
             archivedHTML: archiveContent ? item.contentHTML : nil
+        )
+        // The item's whole body, rather than what the snapshot kept of it.
+        searchText = item.searchText ?? SearchText.make(for: item)
+    }
+
+    /// The searchable text for what a snapshot holds, when there is no cached item to take it from.
+    static func searchText(
+        title: String,
+        authorName: String?,
+        excerpt: String,
+        archivedHTML: String?
+    ) -> String {
+        SearchText.make(
+            title: title,
+            authorName: authorName,
+            body: archivedHTML.map(HTMLText.plainText(from:)) ?? excerpt
         )
     }
 

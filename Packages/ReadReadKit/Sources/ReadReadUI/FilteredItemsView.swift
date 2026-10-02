@@ -10,17 +10,36 @@ import SwiftUI
 struct FilteredItemsView: View {
 
     @Binding var selectedItemID: String?
+
+    /// The search being run over what is hidden, if any.
+    ///
+    /// Searched here rather than handed to `SearchResultsView` like the timeline scopes, so each
+    /// result still says which rule hid it — which is the question this list exists to answer, and
+    /// the likeliest reason to be searching it at all. There is no position to protect here.
+    let searchQuery: SearchQuery?
+
     let moveFocus: (FocusedColumn) -> Void
 
     /// Through `ScopeQuery` rather than a predicate of its own, so the list and the count beside it
     /// are the same question. Written inline they had already drifted: this query showed hidden
     /// items belonging to a switched-off account, which the count deliberately leaves out.
-    @Query(
-        filter: ScopeQuery.displayPredicate(for: .filtered),
-        sort: \CachedItem.sortKeyRaw,
-        order: .reverse
-    )
-    private var items: [CachedItem]
+    @Query private var items: [CachedItem]
+
+    init(
+        selectedItemID: Binding<String?>,
+        searchQuery: SearchQuery? = nil,
+        moveFocus: @escaping (FocusedColumn) -> Void
+    ) {
+        _selectedItemID = selectedItemID
+        self.searchQuery = searchQuery
+        self.moveFocus = moveFocus
+        _items = Query(
+            filter: searchQuery.map { ScopeQuery.searchPredicate(for: .filtered, matching: $0) }
+                ?? ScopeQuery.displayPredicate(for: .filtered),
+            sort: \CachedItem.sortKeyRaw,
+            order: .reverse
+        )
+    }
 
     @Query private var sources: [CachedSource]
     @Query(sort: \FilterRule.createdAt, order: .reverse) private var rules: [FilterRule]
@@ -87,7 +106,9 @@ struct FilteredItemsView: View {
         }
         .plainListSelection()
         .overlay {
-            if items.isEmpty {
+            if items.isEmpty, searchQuery != nil {
+                ContentUnavailableView.search
+            } else if items.isEmpty {
                 ContentUnavailableView(
                     "Nothing Hidden",
                     systemImage: "eye",

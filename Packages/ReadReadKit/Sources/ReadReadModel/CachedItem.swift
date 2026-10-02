@@ -78,6 +78,23 @@ public final class CachedItem {
     /// slow to run per row.
     public var excerpt: String = ""
 
+    /// What a search matches against: title, author, handle and the whole body, as folded plain
+    /// text. See ``SearchText``.
+    ///
+    /// A column rather than something derived per search, because deriving it is the expensive
+    /// part: stripping the HTML of a few thousand articles takes seconds, and a search that paid
+    /// for that on every keystroke could not run while someone types. Folded once here, a search is
+    /// a plain `contains` the store can run on its own.
+    ///
+    /// Not ``excerpt``, which is cut at 320 characters — a word further into an article would never
+    /// be found. Not ``contentHTML`` either: that matches markup, so "class" finds every article,
+    /// and a feed that writes `&auml;` for ä could never be found by the word it spells.
+    ///
+    /// Nil means *not derived yet*, which is a row written before the column existed.
+    /// `SearchTextBackfill` fills those in from the body already stored. Written by the ingest sink
+    /// whenever the fields it is built from change.
+    public var searchText: String?
+
     /// When the item was published, as reported by the feed. Drives display and ordering.
     public var publishedAt: Date = Date.distantPast
 
@@ -237,6 +254,7 @@ public final class CachedItem {
         urlString: String? = nil,
         contentHTML: String = "",
         excerpt: String = "",
+        searchText: String? = nil,
         publishedAt: Date,
         sortKey: SortKey,
         ingestKey: SortKey,
@@ -295,6 +313,10 @@ public final class CachedItem {
         self.mastodonPayload = mastodonPayload
         self.fullPageHTML = fullPageHTML
         self.fullPageFetchedAt = fullPageFetchedAt
+        // Derived here when the caller has not already done it, so that no way of making an item
+        // leaves it unsearchable until the next launch's backfill. The ingest sink passes it in,
+        // because the planner has already stripped the body once for the excerpt.
+        self.searchText = searchText ?? SearchText.make(for: self)
     }
 
     // MARK: - Typed accessors

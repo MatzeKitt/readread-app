@@ -232,6 +232,7 @@ public struct FreshRSSIngestPlanner: Sendable {
 
         let itemID = SourceIdentifier.freshRSSItem(accountID: accountID, itemID: item.id.storageString)
         let html = item.contentHTML
+        let plainText = HTMLText.plainText(from: html)
 
         return IngestedItem(
             id: itemID,
@@ -245,7 +246,10 @@ public struct FreshRSSIngestPlanner: Sendable {
             contentHTML: html,
             // Computed once here rather than while scrolling: the list must never parse HTML per
             // row, and this is the only place that already has the markup in hand.
-            excerpt: HTMLText.excerpt(from: html),
+            excerpt: HTMLText.truncating(plainText, to: 320),
+            // The same stripped text, whole, so the sink can make the item searchable without
+            // stripping the body a second time.
+            bodyText: plainText,
             publishedAt: Date(millisecondsSinceEpoch: resolvedPublished),
             sortKey: SortKey(millis: resolvedIngest, id: itemID),
             ingestKey: SortKey(millis: resolvedIngest, id: itemID),

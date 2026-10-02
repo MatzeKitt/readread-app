@@ -2698,6 +2698,17 @@
         }
       }
     },
+    "Search": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suchen"
+          }
+        }
+      }
+    },
     "Sensitive media": {
       "extractionState": "manual",
       "localizations": {

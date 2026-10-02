@@ -61,6 +61,16 @@ public struct RootView: View {
     @State private var selectedScope: ScopeID? = .all
     @State private var selectedItemID: String?
 
+    /// What is typed into the search field over the timeline column.
+    @State private var searchText = ""
+
+    /// The search actually run, settled from ``searchText`` once typing pauses.
+    ///
+    /// Held here rather than in the timeline column because the reading pane needs it too: on
+    /// iPhone and iPad, next and previous step through the results the reader came from rather
+    /// than through the whole scope.
+    @State private var searchQuery: SearchQuery?
+
     /// Owned here because `.focused` needs `@FocusState`, which cannot be passed to child views as
     /// an ordinary `Binding`. Children ask to move focus through a closure instead, which also
     /// keeps them previewable in isolation.
@@ -109,6 +119,8 @@ public struct RootView: View {
                 scope: selectedScope ?? .all,
                 selectedItemID: $selectedItemID,
                 counts: counts,
+                searchText: $searchText,
+                searchQuery: searchQuery,
                 moveFocus: { focusedColumn = $0 }
             )
             // Underneath the width modifier, and it has to be. `navigationSplitViewColumnWidth`
@@ -132,6 +144,7 @@ public struct RootView: View {
             DetailView(
                 itemID: $selectedItemID,
                 scope: selectedScope ?? .all,
+                searchQuery: searchQuery,
                 moveFocus: { focusedColumn = $0 }
             )
             .focused($focusedColumn, equals: .detail)
@@ -279,6 +292,13 @@ public struct RootView: View {
             _ = try? await backfill.fillMissingLinkCards()
             _ = try? await backfill.fillMissingInteractionState()
 
+            // Not awaited, unlike the backfills above: it strips the body of every article already
+            // stored, which is seconds of work that must not hold up the window. Started after the
+            // migrations, which rewrite the same rows. See `SearchTextBackfill`.
+            Task.detached(priority: .utility) {
+                _ = try? await SearchTextBackfill(modelContainer: container).fillMissing()
+            }
+
             counts.startObserving(context: modelContext)
             await services.start()
             // The timeline is where the arrow keys matter most, so it starts focused rather than
@@ -289,6 +309,24 @@ public struct RootView: View {
         // beside a timeline that has changed underneath it reads as a rendering bug.
         .onChange(of: selectedScope) {
             selectedItemID = nil
+            // A search belongs to the scope it was typed over. Carried across, it would open the
+            // next scope already narrowed — on iPhone, behind a search bar that has scrolled out of
+            // sight, which reads as a feed that has lost most of its items.
+            searchText = ""
+            searchQuery = nil
+        }
+        // Settled after a pause rather than on every keystroke: each new query builds a new list
+        // and a new fetch over the whole scope, and the letters in between are not what anybody is
+        // looking for. Clearing is immediate, so the timeline comes back the moment the field is
+        // emptied.
+        .task(id: searchText) {
+            let query = SearchQuery(searchText)
+            guard query != searchQuery else { return }
+            if query != nil {
+                try? await Task.sleep(for: .milliseconds(250))
+                guard !Task.isCancelled else { return }
+            }
+            searchQuery = query
         }
     }
 

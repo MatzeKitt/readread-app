@@ -1,4 +1,5 @@
 import Foundation
+import ReadReadSupport
 import SwiftData
 
 /// Writes ingest results into the SwiftData store.
@@ -186,6 +187,16 @@ public actor SwiftDataIngestSink: IngestSink {
 
         let hidden = shouldHide.map { $0(FilterSubject(item, sourceTitle: sourceTitle(for: item.sourceID))) } ?? false
 
+        // Rebuilt on every write, update included: it is derived from the title, the author and
+        // the body, and a corrected article that kept its old search text would be found by words
+        // it no longer contains and missed by the ones it now does.
+        let searchText = SearchText.make(
+            title: item.title,
+            authorName: item.authorName,
+            authorHandle: item.authorHandle,
+            body: item.bodyText ?? HTMLText.plainText(from: item.contentHTML)
+        )
+
         if let existing = try? modelContext.fetch(descriptor).first {
             // Content can legitimately change — a corrected article, an edited post — so the body
             // is refreshed, but the arrival judgement is left alone.
@@ -195,6 +206,7 @@ public actor SwiftDataIngestSink: IngestSink {
             existing.urlString = item.urlString
             existing.contentHTML = item.contentHTML
             existing.excerpt = item.excerpt
+            existing.searchText = searchText
             existing.publishedAt = item.publishedAt
             existing.sortKey = item.sortKey
             existing.folderName = item.folderName
@@ -245,6 +257,7 @@ public actor SwiftDataIngestSink: IngestSink {
             urlString: item.urlString,
             contentHTML: item.contentHTML,
             excerpt: item.excerpt,
+            searchText: searchText,
             publishedAt: item.publishedAt,
             sortKey: item.sortKey,
             ingestKey: item.ingestKey,

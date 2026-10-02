@@ -11,6 +11,15 @@ import SwiftUI
 struct ReadLaterListView: View {
 
     @Binding var selectedItemID: String?
+
+    /// The search being run over the pile, if any.
+    ///
+    /// Read Later searches its own entries rather than the cache, because an entry is a snapshot
+    /// that outlives the item it was taken from — the article saved last spring is here long after
+    /// the cache let it go. Unlike the timeline, the list can simply narrow: it has no fold that
+    /// the narrowing would move.
+    let searchQuery: SearchQuery?
+
     let moveFocus: (FocusedColumn) -> Void
 
     @Environment(\.modelContext) private var modelContext
@@ -19,7 +28,22 @@ struct ReadLaterListView: View {
     @Environment(\.openURL) private var openURL
 
     /// Most recently saved first, which is the order people expect from a save-for-later pile.
-    @Query(sort: \ReadLaterEntry.addedAt, order: .reverse) private var entries: [ReadLaterEntry]
+    @Query private var entries: [ReadLaterEntry]
+
+    init(
+        selectedItemID: Binding<String?>,
+        searchQuery: SearchQuery? = nil,
+        moveFocus: @escaping (FocusedColumn) -> Void
+    ) {
+        _selectedItemID = selectedItemID
+        self.searchQuery = searchQuery
+        self.moveFocus = moveFocus
+        _entries = Query(
+            filter: searchQuery.map(ReadLaterService.searchPredicate(matching:)),
+            sort: \ReadLaterEntry.addedAt,
+            order: .reverse
+        )
+    }
 
     @Query private var sources: [CachedSource]
 
@@ -82,7 +106,9 @@ struct ReadLaterListView: View {
         }
         .plainListSelection()
         .overlay {
-            if entries.isEmpty {
+            if entries.isEmpty, searchQuery != nil {
+                ContentUnavailableView.search
+            } else if entries.isEmpty {
                 ContentUnavailableView(
                     "Nothing Saved",
                     systemImage: "bookmark",

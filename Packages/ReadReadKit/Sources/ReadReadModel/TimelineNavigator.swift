@@ -19,18 +19,25 @@ public enum TimelineNavigator {
     ///
     /// One row is fetched, not the scope's whole timeline: this runs on a swipe, and the answer is
     /// always the single nearest item in the direction of travel.
+    ///
+    /// - Parameter query: The search the item was picked from, if any. Given, "next" is the next
+    ///   result, which is the list the reader is looking at.
     public static func adjacentItemID(
         to itemID: String,
         in scope: ScopeID,
+        matching query: SearchQuery? = nil,
         direction: Direction,
         context: ModelContext
     ) throws -> String? {
         guard let current = try item(itemID, in: context) else { return nil }
-        guard let predicate = ScopeQuery.adjacentPredicate(
-            for: scope,
-            bound: current.sortKeyRaw,
-            isNewer: direction == .newer
-        ) else { return nil }
+        let bound = current.sortKeyRaw
+        let isNewer = direction == .newer
+        let predicate = if let query {
+            ScopeQuery.adjacentPredicate(for: scope, matching: query, bound: bound, isNewer: isNewer)
+        } else {
+            ScopeQuery.adjacentPredicate(for: scope, bound: bound, isNewer: isNewer)
+        }
+        guard let predicate else { return nil }
 
         // Sorted *towards* the neighbour, so the first row past the bound is the answer.
         var descriptor = FetchDescriptor<CachedItem>(

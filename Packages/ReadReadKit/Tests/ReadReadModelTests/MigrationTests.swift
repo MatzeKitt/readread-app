@@ -102,6 +102,28 @@ struct MigrationTests {
         #expect(account.serverURL?.host() == "rss.example.com")
     }
 
+    @Test("What an older store holds becomes searchable")
+    func legacyRowsBecomeSearchable() async throws {
+        let url = try makeLegacyStore()
+        defer { removeStore(at: url) }
+
+        let container = try ReadReadStore.container(url: url)
+        let context = ModelContext(container)
+
+        // Nil, not empty: nil is what `SearchTextBackfill` looks for. A migration that filled the
+        // column with "" would leave every existing item unsearchable for good.
+        let item = try #require(try context.fetch(FetchDescriptor<CachedItem>()).first)
+        let entry = try #require(try context.fetch(FetchDescriptor<ReadLaterEntry>()).first)
+        #expect(item.searchText == nil)
+        #expect(entry.searchText == nil)
+
+        #expect(try await SearchTextBackfill(modelContainer: container).fillMissing() == 2)
+
+        let refreshed = ModelContext(container)
+        #expect(try refreshed.fetch(FetchDescriptor<CachedItem>()).first?.searchText?.isEmpty == false)
+        #expect(try refreshed.fetch(FetchDescriptor<ReadLaterEntry>()).first?.searchText?.isEmpty == false)
+    }
+
     @Test("Properties added since take their defaults rather than failing")
     func newPropertiesTakeDefaults() throws {
         let url = try makeLegacyStore()
