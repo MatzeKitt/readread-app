@@ -37,6 +37,11 @@ settings:
     PROVISIONING_PROFILE_SPECIFIER: ""
     GCC_TREAT_WARNINGS_AS_ERRORS: NO
     SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+    # XcodeGen defaults this to YES. The symbols would only exist in the app target, while the
+    # strings are used from ReadReadKit as plain `LocalizedStringKey`s — and keys that differ only
+    # in case or a trailing ellipsis ("Reply" / "Reply…") collide on the same symbol, which fails
+    # the build.
+    STRING_CATALOG_GENERATE_SYMBOLS: NO
 
 packages:
   ReadReadKit:
