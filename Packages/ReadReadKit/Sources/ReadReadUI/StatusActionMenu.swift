@@ -159,11 +159,25 @@ struct StatusActionMenu: View {
         }
     }
 
-    /// What the placement changes: whether the button's name is available on hover.
+    /// What the placement changes: whether the button's name is available on hover, and whether a
+    /// per-account menu shows its chevron.
     ///
     /// A modifier rather than an `if` inside the builder, because branching on the placement would
     /// give the two cases different view identities — and a toolbar item that changes identity when
     /// a second account is added is a toolbar item that animates itself out and back in.
+    ///
+    /// ## Why the toolbar hides the menu indicator
+    ///
+    /// On macOS 26 a toolbar `Menu` that draws its chevron is put on a glass platter of its own,
+    /// and it takes the neighbouring buttons' platters apart with it: with two accounts, Share,
+    /// Like, Boost and Reply came out as four separate capsules instead of one. Hiding the
+    /// indicator is the whole difference — the same menus, without it, share one platter with the
+    /// buttons around them, and still open on a click, so which account acts is still asked.
+    /// `Menu(primaryAction:)` groups as well, but it makes a plain click act as the first account,
+    /// which is exactly the choice the menu exists not to make for the reader.
+    ///
+    /// Counted from the `NSToolbarPlatterView`s in the window's view tree rather than by eye, since
+    /// no screenshot can be taken here.
     private struct ActionPresentation: ViewModifier {
 
         let placement: Placement
@@ -175,7 +189,9 @@ struct StatusActionMenu: View {
                 // The title is already beside the icon; a tooltip repeating it would be noise.
                 content
             case .toolbar:
-                content.toolbarButtonHelp(title)
+                content
+                    .toolbarButtonHelp(title)
+                    .menuIndicator(.hidden)
             }
         }
     }
