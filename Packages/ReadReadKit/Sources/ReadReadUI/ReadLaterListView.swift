@@ -59,18 +59,60 @@ struct ReadLaterListView: View {
         )
     }
 
+    @Query private var replySubscriptions: [ReplySubscription]
+
+    /// The cached posts behind the saved ones, by item id, so a post can be drawn with the
+    /// timeline's own row.
+    ///
+    /// A snapshot keeps an article's headline and excerpt, which is all its row ever shows — but a
+    /// post's row is avatar, handle, formatted text, media, link card and counts, and none of that
+    /// is in the snapshot. So a saved post came out as a bare title and excerpt here, looking
+    /// nothing like the same post one click away in the timeline. Saved items are never pruned (see
+    /// `Retention`), so the cached post is there for everything saved on this device; an entry that
+    /// only arrived by sync may not have one, and keeps the snapshot row.
+    ///
+    /// Fetched once per change to the list rather than per row: a row is realised as fast as the
+    /// list can scroll, and a fetch inside one is a fetch per cell.
+    @State private var cachedStatuses: [String: CachedItem] = [:]
+
+    private var replySubscriptionTitles: [UUID: String] {
+        Dictionary(
+            replySubscriptions.map { ($0.id, $0.title) },
+            uniquingKeysWith: { first, _ in first }
+        )
+    }
+
     var body: some View {
         let icons = sourceIcons
+        let titles = sourceTitles
+        let subscriptionTitles = replySubscriptionTitles
 
         return List(selection: $selectedItemID) {
             ForEach(entries) { entry in
-                ReadLaterRow(
-                    entry: entry,
-                    sourceIconURLString: icons[entry.sourceID],
-                    headingScale: settings.reading.listHeadingScale,
-                    bodyScale: settings.reading.listBodyScale,
-                    lineHeight: settings.reading.contentLineHeight
-                )
+                Group {
+                    if let item = cachedStatuses[entry.itemID] {
+                        ItemRow(
+                            item: item,
+                            sourceTitle: titles[item.sourceID] ?? entry.sourceTitle,
+                            sourceIconURLString: icons[item.sourceID],
+                            replySubscriptionTitle: item.replySubscriptionID.flatMap { subscriptionTitles[$0] },
+                            // The badge explains a row's place in the timeline's order, and this
+                            // list is ordered by when things were saved.
+                            showsLateArrival: false,
+                            headingScale: settings.reading.listHeadingScale,
+                            bodyScale: settings.reading.listBodyScale,
+                            lineHeight: settings.reading.contentLineHeight
+                        )
+                    } else {
+                        ReadLaterRow(
+                            entry: entry,
+                            sourceIconURLString: icons[entry.sourceID],
+                            headingScale: settings.reading.listHeadingScale,
+                            bodyScale: settings.reading.listBodyScale,
+                            lineHeight: settings.reading.contentLineHeight
+                        )
+                    }
+                }
                     .tag(entry.itemID)
                     // The same marking as the timeline, for the same reason. See `SelectionMarker`.
                     .listRowBackground(SelectionMarker(isSelected: selectedItemID == entry.itemID))
@@ -105,6 +147,9 @@ struct ReadLaterListView: View {
             }
         }
         .plainListSelection()
+        .task(id: entries.map(\.itemID)) {
+            cachedStatuses = fetchCachedStatuses(ids: entries.map(\.itemID))
+        }
         .overlay {
             if entries.isEmpty, searchQuery != nil {
                 ContentUnavailableView.search
@@ -159,15 +204,46 @@ struct ReadLaterListView: View {
         //
         // Declining the rest matters as much as handling this one: every keystroke over the list
         // arrives here, and swallowing the unbound ones would take away the list's own navigation.
+        //
+        // Read Later is handled here too, although the Remove button carries its key. A bare
+        // letter on a `keyboardShortcut` loses to the list's type-select, exactly as it did over
+        // the timeline — see `TimelineList.handleShortcut(_:)` — so pressing `L` here moved the
+        // selection to the next title beginning with "l" and removed nothing.
         .onKeyPress(phases: .down) { press in
-            guard settings.shortcuts.openInBrowser.matches(press), let url = selectedEntry?.url else {
-                return .ignored
+            guard let entry = selectedEntry else { return .ignored }
+
+            if settings.shortcuts.readLater.matches(press) {
+                // Every entry here is saved, so the toggle is always a removal.
+                remove(entry.itemID)
+                return .handled
             }
-            // Behind the app where it can be, as in the timeline — a saved pile is worked through
-            // the same way. See `LinkActions.openForShortcut(_:otherwise:)`.
-            LinkActions.openForShortcut(url, otherwise: openURL)
-            return .handled
+            if settings.shortcuts.openInBrowser.matches(press), let url = entry.url {
+                // Behind the app where it can be, as in the timeline — a saved pile is worked
+                // through the same way. See `LinkActions.openForShortcut(_:otherwise:)`.
+                LinkActions.openForShortcut(url, otherwise: openURL)
+                return .handled
+            }
+            return .ignored
         }
+    }
+
+    /// Feed id to name, for the byline of a cached post whose author has no display name.
+    private var sourceTitles: [String: String] {
+        Dictionary(
+            sources.map { ($0.id, $0.title) },
+            uniquingKeysWith: { first, _ in first }
+        )
+    }
+
+    /// The cached posts among `ids`, in one fetch. See ``cachedStatuses``.
+    private func fetchCachedStatuses(ids: [String]) -> [String: CachedItem] {
+        guard !ids.isEmpty else { return [:] }
+        let status = ItemKind.status.rawValue
+        let descriptor = FetchDescriptor<CachedItem>(
+            predicate: #Predicate { ids.contains($0.id) && $0.kindRaw == status }
+        )
+        let items = (try? modelContext.fetch(descriptor)) ?? []
+        return Dictionary(items.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
     private var selectedEntry: ReadLaterEntry? {
