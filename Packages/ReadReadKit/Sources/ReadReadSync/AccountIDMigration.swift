@@ -419,7 +419,8 @@ public enum AccountIDMigration {
     /// The same scope addressed by the account's new id, or `nil` when it does not name one.
     ///
     /// `.all`, `.folder`, `.readLater`, `.lateArrivals` and `.filtered` carry no account id, which
-    /// is exactly why those were the only positions that ever synced.
+    /// is exactly why those were the only positions that ever synced. `.replySubscription` carries
+    /// none either: it names the subscription, whose own id is the same on every device.
     public static func rewrite(scope: ScopeID, using map: [UUID: UUID]) -> ScopeID? {
         switch scope {
         case .source(let id):
@@ -428,7 +429,7 @@ public enum AccountIDMigration {
         case .mastodonHome(let accountID):
             guard let new = map[accountID] else { return nil }
             return .mastodonHome(accountID: new)
-        case .all, .folder, .readLater, .lateArrivals, .filtered:
+        case .all, .folder, .readLater, .lateArrivals, .filtered, .replySubscription:
             return nil
         }
     }

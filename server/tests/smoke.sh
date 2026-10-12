@@ -122,6 +122,7 @@ check "a tombstone's payload must still be JSON" "400" \
 
 echo
 echo "Validation"
+check "a reply subscription is accepted"  "200" "$(status "${AUTH[@]}" "${JSON[@]}" -X POST "$BASE/api/v1/changes" -d '{"records":[{"collection":"replySubscription","id":"r1","payload":"{}"}]}')"
 check "an unknown collection is rejected" "400" "$(status "${AUTH[@]}" "${JSON[@]}" -X POST "$BASE/api/v1/changes" -d '{"records":[{"collection":"nope","id":"x","payload":"{}"}]}')"
 check "an empty id is rejected"           "400" "$(status "${AUTH[@]}" "${JSON[@]}" -X POST "$BASE/api/v1/changes" -d '{"records":[{"collection":"filter","id":"","payload":"{}"}]}')"
 check "a non-JSON payload is rejected"    "400" "$(status "${AUTH[@]}" "${JSON[@]}" -X POST "$BASE/api/v1/changes" -d '{"records":[{"collection":"filter","id":"x","payload":"not json"}]}')"

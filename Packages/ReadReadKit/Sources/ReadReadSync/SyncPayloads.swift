@@ -84,6 +84,22 @@ public struct FilterPayload: Codable, Sendable, Equatable {
     public var updatedAt: Date
 }
 
+/// A post whose replies the reader follows.
+///
+/// Carries the post's id on the account's instance as well as its URL. The id is what the
+/// conversation is fetched by, and it is the same on every device because the account is: resolving
+/// the URL again on each one would be a search request apiece for an answer that cannot differ.
+public struct ReplySubscriptionPayload: Codable, Sendable, Equatable {
+
+    public var id: String
+    public var accountID: String
+    public var statusID: String
+    public var statusURLString: String
+    public var title: String
+    public var createdAt: Date
+    public var updatedAt: Date
+}
+
 /// A configured account — **never** its credentials.
 ///
 /// The point of syncing this at all is that a new device shows the right servers and only needs
@@ -197,6 +213,19 @@ public extension FilterPayload {
         isEnabled = rule.isEnabled
         createdAt = rule.createdAt
         updatedAt = rule.updatedAt
+    }
+}
+
+public extension ReplySubscriptionPayload {
+
+    init(_ subscription: ReplySubscription) {
+        id = subscription.id.uuidString
+        accountID = subscription.accountID.uuidString
+        statusID = subscription.statusID
+        statusURLString = subscription.statusURLString
+        title = subscription.title
+        createdAt = subscription.createdAt
+        updatedAt = subscription.updatedAt
     }
 }
 

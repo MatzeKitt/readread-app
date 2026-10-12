@@ -27,7 +27,7 @@ final class RecordStore
     public const MAX_PAYLOAD_BYTES = 262144;
 
     /** Collections the client is known to use. Anything else is rejected as a client bug. */
-    public const COLLECTIONS = ['position', 'readLater', 'filter', 'account'];
+    public const COLLECTIONS = ['position', 'readLater', 'filter', 'account', 'replySubscription'];
 
     public function __construct(private readonly Database $database)
     {

@@ -18,6 +18,7 @@ public struct SidebarRow: Identifiable, Hashable, Sendable {
         case folder(name: String)
         case feed(sourceID: String)
         case mastodonHome(accountID: UUID)
+        case replySubscription(id: UUID)
     }
 
     public var kind: Kind
@@ -42,6 +43,7 @@ public struct SidebarRow: Identifiable, Hashable, Sendable {
         case .folder(let name): .folder(name)
         case .feed(let sourceID): .source(sourceID)
         case .mastodonHome(let accountID): .mastodonHome(accountID: accountID)
+        case .replySubscription(let id): .replySubscription(id)
         }
     }
 
@@ -83,7 +85,11 @@ public struct SidebarSection: Identifiable, Hashable, Sendable {
 /// Builds the sidebar's sections from the store.
 public enum SidebarTree {
 
-    public static func build(accounts: [AccountRecord], sources: [CachedSource]) -> [SidebarSection] {
+    public static func build(
+        accounts: [AccountRecord],
+        sources: [CachedSource],
+        replySubscriptions: [ReplySubscription] = []
+    ) -> [SidebarSection] {
         var sections: [SidebarSection] = [
             SidebarSection(title: nil, rows: [
                 SidebarRow(kind: .allItems, title: String(localized: "All Items"), systemImage: "tray.full"),
@@ -116,7 +122,11 @@ public enum SidebarTree {
 
             let rows = switch account.kind {
             case .freshRSS: groupedByFolder(accountSources)
-            case .mastodon: mastodonRows(for: account, sources: accountSources)
+            case .mastodon: mastodonRows(
+                for: account,
+                sources: accountSources,
+                subscriptions: replySubscriptions.filter { $0.accountID == account.id }
+            )
             }
 
             sections.append(SidebarSection(title: account.displayName, rows: rows))
@@ -167,10 +177,14 @@ public enum SidebarTree {
         )
     }
 
-    private static func mastodonRows(for account: AccountRecord, sources: [CachedSource]) -> [SidebarRow] {
-        // Only the home timeline in v1, so the account's single row is addressed by the dedicated
+    private static func mastodonRows(
+        for account: AccountRecord,
+        sources: [CachedSource],
+        subscriptions: [ReplySubscription]
+    ) -> [SidebarRow] {
+        // Only the home timeline as a source, so the account's row is addressed by the dedicated
         // `mastodonHome` scope rather than by its source id.
-        sources.map { source in
+        let home = sources.map { source in
             SidebarRow(
                 kind: .mastodonHome(accountID: account.id),
                 title: source.title,
@@ -178,5 +192,21 @@ public enum SidebarTree {
                 systemImage: "bubble.left.and.bubble.right"
             )
         }
+
+        // Beside the home timeline rather than folded under it, although their replies are in it:
+        // a disclosure group starts closed, and a subscription made from the reading pane would
+        // then appear nowhere the reader could see. In the order they were made, so a new one is
+        // found at the bottom rather than shuffling the rest.
+        let followed = subscriptions
+            .sorted { $0.createdAt < $1.createdAt }
+            .map { subscription in
+                SidebarRow(
+                    kind: .replySubscription(id: subscription.id),
+                    title: subscription.title.isEmpty ? subscription.statusURLString : subscription.title,
+                    systemImage: "arrowshape.turn.up.left.2"
+                )
+            }
+
+        return home + followed
     }
 }

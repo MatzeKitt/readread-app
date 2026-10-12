@@ -1,4 +1,5 @@
 import ReadReadModel
+import ReadReadSync
 import SwiftData
 import SwiftUI
 
@@ -14,9 +15,15 @@ struct SidebarView: View {
 
     @Query(sort: \AccountRecord.createdAt) private var accounts: [AccountRecord]
     @Query(sort: \CachedSource.sortIndex) private var sources: [CachedSource]
+    @Query(sort: \ReplySubscription.createdAt) private var replySubscriptions: [ReplySubscription]
+
+    /// Both optional so the sidebar still renders in a preview, where the shell's services and
+    /// presentations are not installed. The composer is where the subscription sheet is presented.
+    @Environment(AppServices.self) private var services: AppServices?
+    @Environment(StatusComposer.self) private var composer: StatusComposer?
 
     private var sections: [SidebarSection] {
-        SidebarTree.build(accounts: accounts, sources: sources)
+        SidebarTree.build(accounts: accounts, sources: sources, replySubscriptions: replySubscriptions)
     }
 
     var body: some View {
@@ -97,13 +104,57 @@ struct SidebarView: View {
         }
     }
 
-    /// Per-feed settings. Only feeds have any, so every other row gets no menu at all rather than
-    /// an empty one.
+    /// Per-feed settings, and managing reply subscriptions. Every other row gets no menu at all
+    /// rather than an empty one.
     @ViewBuilder
     private func menu(for row: SidebarRow) -> some View {
-        if case .feed(let sourceID) = row.kind, let source = source(sourceID) {
-            FeedContextMenu(source: source)
+        switch row.kind {
+        case .feed(let sourceID):
+            if let source = source(sourceID) {
+                FeedContextMenu(source: source)
+            }
+
+        case .mastodonHome(let accountID):
+            // On the account's own row, because a subscription belongs to an account: its replies
+            // are fetched from that account's server and land in this timeline.
+            if let composer {
+                Button("Subscribe to Replies…", systemImage: "arrowshape.turn.up.left.2") {
+                    composer.newSubscription(accountID: accountID)
+                }
+            }
+
+        case .replySubscription(let id):
+            if let subscription = replySubscriptions.first(where: { $0.id == id }) {
+                ReplySubscriptionContextMenu(
+                    subscription: subscription,
+                    edit: { composer?.edit(subscription) },
+                    unsubscribe: { unsubscribe(subscription) }
+                )
+            }
+
+        case .allItems, .readLater, .lateArrivals, .filtered, .folder:
+            EmptyView()
         }
+    }
+
+    /// Removes a subscription, and moves the selection off its list if it was open.
+    ///
+    /// Moved to the account's home timeline, which is where the replies still are — the list being
+    /// read would otherwise turn into an empty one with nothing to say why.
+    private func unsubscribe(_ subscription: ReplySubscription) {
+        let scope = subscription.scope
+        let home = ScopeID.mastodonHome(accountID: subscription.accountID)
+        do {
+            try ReplySubscriptionEditing.unsubscribe(subscription, in: modelContext)
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            return
+        }
+        if selectedScope == scope {
+            selectedScope = home
+        }
+        services?.replySubscriptionsChanged()
     }
 
     private func source(_ id: String) -> CachedSource? {
@@ -138,6 +189,28 @@ private struct FeedContextMenu: View {
             Divider()
             Button("Open Website") { openURL(homepage) }
         }
+    }
+}
+
+/// The context menu on a reply subscription's row.
+private struct ReplySubscriptionContextMenu: View {
+
+    let subscription: ReplySubscription
+    let edit: () -> Void
+    let unsubscribe: () -> Void
+
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        Button("Edit Subscription…", systemImage: "pencil", action: edit)
+
+        if let url = subscription.statusURL {
+            Button("Open Post", systemImage: "safari") { openURL(url) }
+        }
+
+        Divider()
+
+        Button("Unsubscribe", systemImage: "xmark.circle", role: .destructive, action: unsubscribe)
     }
 }
 

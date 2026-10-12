@@ -19,6 +19,10 @@ struct ItemRow: View {
     /// row while the sidebar, built from the same feeds, showed their favicons.
     var sourceIconURLString: String?
 
+    /// The title of the reply subscription this post came in through, when it did. Passed in like
+    /// the source's title, for the same reason.
+    var replySubscriptionTitle: String?
+
     /// Whether to explain that the item arrived below the reading position.
     ///
     /// Off in the "older items arrived" list, where every row shares that state and the badge
@@ -106,6 +110,7 @@ struct ItemRow: View {
         item: CachedItem,
         sourceTitle: String? = nil,
         sourceIconURLString: String? = nil,
+        replySubscriptionTitle: String? = nil,
         showsLateArrival: Bool = true,
         headingScale: TextScale = .standard,
         bodyScale: TextScale = .standard,
@@ -114,6 +119,7 @@ struct ItemRow: View {
         self.item = item
         self.sourceTitle = sourceTitle
         self.sourceIconURLString = sourceIconURLString
+        self.replySubscriptionTitle = replySubscriptionTitle
         self.showsLateArrival = showsLateArrival
         self.headingScale = headingScale
         self.bodyScale = bodyScale
@@ -235,6 +241,10 @@ struct ItemRow: View {
                         .foregroundStyle(Self.bodyColor)
                         .lineLimit(3)
                 }
+            }
+
+            if item.kind == .status, item.replySubscriptionID != nil {
+                followedReplyAttribution
             }
 
             if item.kind == .status, boostedBy != nil || hasEngagement {
@@ -413,6 +423,31 @@ struct ItemRow: View {
         .font(.caption2)
         // A step brighter than the counts beside it. This is the reason the post is in the
         // timeline at all, where the counts are trivia about it.
+        .foregroundStyle(.secondary)
+    }
+
+    /// Says that this post is a reply in a conversation the reader follows, and which one.
+    ///
+    /// A line of its own, rather than a place on the boost-and-counts line: it is why the post is in
+    /// the timeline at all — most followed replies come from people the reader does not follow,
+    /// with nothing else on the row to say why they are there — and it carries a title that can
+    /// run long. Generic where the title is not to hand, as in the search results, which do not
+    /// look subscriptions up.
+    private var followedReplyAttribution: some View {
+        Label {
+            Group {
+                if let title = replySubscriptionTitle, !title.isEmpty {
+                    Text("Reply in \(title)")
+                } else {
+                    Text("Reply in a followed conversation")
+                }
+            }
+            .lineLimit(1)
+        } icon: {
+            Image(systemName: "arrowshape.turn.up.left.2")
+        }
+        .font(.caption2)
+        // The same weight as the boost attribution, for the same reason.
         .foregroundStyle(.secondary)
     }
 

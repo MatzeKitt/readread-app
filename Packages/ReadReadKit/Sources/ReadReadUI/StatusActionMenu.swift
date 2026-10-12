@@ -65,6 +65,9 @@ struct StatusActionMenu: View {
     /// still renders in a preview, or anywhere else the shell's presentations are not installed.
     @Environment(StatusComposer.self) private var composer: StatusComposer?
 
+    /// Where Show Profile presents. Optional for the same reason as the composer.
+    @Environment(ProfileViewerModel.self) private var profiles: ProfileViewerModel?
+
     private var isFavourited: Bool { item.isFavourited ?? false }
     private var isReblogged: Bool { item.isReblogged ?? false }
 
@@ -103,6 +106,15 @@ struct StatusActionMenu: View {
             // away from Like — and the reader asked for it on the list, which is where a person
             // decides they have had enough of somebody.
             if placement == .contextMenu {
+                // Here and not in the toolbar: in the reading pane the author's name is itself the
+                // way to the profile, and a second button for it would be a duplicate.
+                Button("Show Profile", systemImage: "person.crop.circle") {
+                    guard profiles?.open(authorOf: item) == true else {
+                        services.reportUnusableStatus()
+                        return
+                    }
+                }
+
                 Divider()
 
                 Button("Mute \(handle)", systemImage: StatusActionSymbol.mute, role: .destructive) {

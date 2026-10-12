@@ -1,7 +1,7 @@
 # readread-sync
 
-The sync service for ReadRead. It carries **reading positions, Read Later entries, filter rules and
-the account list** between your devices.
+The sync service for ReadRead. It carries **reading positions, Read Later entries, filter rules,
+reply subscriptions and the account list** between your devices.
 
 It deliberately does **not** carry credentials. FreshRSS API passwords, Mastodon OAuth tokens and
 this service's own bearer token live only in each device's Keychain. A compromised sync host
@@ -159,7 +159,10 @@ have not pulled yet, and adopting this value would skip it permanently. The pull
 advances from a pull. The app enforces this and there is a test for it, because the bug it causes
 is silent.
 
-Collections are `position`, `readLater`, `filter` and `account`. A deletion is a record with
+Collections are `position`, `readLater`, `filter`, `account` and `replySubscription`. The server
+rejects any other, so a build of the app that adds a collection needs the server updated first —
+until then the app's records for that collection are refused and dropped, while the other
+collections keep syncing, since the app pushes each collection in a request of its own. A deletion is a record with
 `deleted: true` — a tombstone, so other devices learn about it rather than re-uploading their copy.
 
 A tombstone is stored with whatever payload it was pushed with, which for everything but an account

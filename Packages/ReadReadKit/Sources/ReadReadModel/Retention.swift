@@ -250,6 +250,10 @@ public actor RetentionService {
         if let folder = source.folderName {
             scopes.append(.folder(folder))
         }
+        // A reply subscription is not listed, although it counts some of a home timeline's items.
+        // The cascade keeps the home timeline's marker at or below every subscription inside it,
+        // so the home marker is already the lower of the two — and a subscription with no position
+        // yet reads as `distantPast`, which would stop the whole timeline from ever being pruned.
 
         var lowest = SortKey.distantFuture
         for scope in scopes {

@@ -5,7 +5,8 @@ import ReadReadSupport
 /// Walks a Mastodon home timeline and writes what it finds, one page at a time, resumably.
 ///
 /// A second walk, over the account's mention notifications, writes into the same timeline: see
-/// ``ingestMentions(budget:historyWindowDays:now:)``.
+/// ``ingestMentions(budget:historyWindowDays:now:)``. So does a third, over the conversations the
+/// reader has subscribed to: see ``ingestReplies(to:subscriptionID:budget:historyWindowDays:now:)``.
 ///
 /// Structurally the same two-cursor walk as the FreshRSS planner, for the same reason: a run that
 /// is cut short must not raise the stop line past pages it never fetched. The differences are all
@@ -121,6 +122,135 @@ public struct MastodonIngestPlanner: Sendable {
                 nextMaxID: page.nextMaxID
             )
         }
+    }
+
+    /// Fetches the replies to a subscribed post, and writes the ones not seen before into this
+    /// account's home timeline.
+    ///
+    /// Into the home timeline, under each reply's own item id, for the reason mentions go there: a
+    /// reply from someone the reader follows also arrives through the home walk, and the shared id
+    /// is what keeps that one row. Each row is marked with the subscription, which is what the
+    /// subscription's own list selects on.
+    ///
+    /// ## Why this remembers ids rather than keeping a stop line
+    ///
+    /// The other walks stop at the newest id a completed run saw, which works because a timeline is
+    /// ordered by id. A conversation is not a timeline in that sense. An instance mints a remote
+    /// post's id from the time the post was *written*, so a reply that federates an hour late — or
+    /// one the instance goes back and fetches when asked for the thread — arrives with an id from
+    /// an hour ago, below any line drawn since, and a stop line would skip it for good. Losing
+    /// late replies is losing exactly what the subscription is for.
+    ///
+    /// So a completed run records **every** reply id it was given, and the next one writes only
+    /// the replies missing from that set. A conversation arrives whole in one response, so the set
+    /// is bounded by the size of the thread. It is kept in the cursor's stop-line field, which for
+    /// this stream has no line to hold; `highestSeenID` being empty still means what it means for
+    /// every stream — no run has completed — so the first walk flags nothing as a late arrival.
+    ///
+    /// Remembering ids rather than writing everything every time is also what keeps retention
+    /// working: a reply the cache pruned is still in the set, so it is not written straight back.
+    ///
+    /// - Parameter statusID: The subscribed post's id on this account's instance.
+    /// - Returns: A complete outcome when the conversation was read, including when the post has
+    ///   gone; one that stopped for its budget when there was no time left to ask.
+    public func ingestReplies(
+        to statusID: MastodonStatusID,
+        subscriptionID: UUID,
+        budget: IngestBudget = .foreground,
+        historyWindowDays: Int = HistoryWindow.unlimited,
+        now: Date = .now
+    ) async throws -> IngestOutcome {
+        let streamKey = Self.repliesStreamKey(for: subscriptionID)
+        let state = try await sink.cursorState(accountID: accountID, streamKey: streamKey)
+        let seen = Self.decodeSeenIDs(state.highestSeenID)
+
+        var outcome = IngestOutcome()
+        guard budget.maxPages > 0, budget.hasTimeRemaining() else {
+            outcome.stoppedForBudget = true
+            try await sink.abandonRun(accountID: accountID, streamKey: streamKey)
+            return outcome
+        }
+        try Task.checkCancellation()
+
+        let conversation: MastodonStatusContext
+        do {
+            conversation = try await client.context(of: statusID)
+        } catch let error as HTTPError {
+            // Deleted, or no longer visible to this account. A fact about the post, not a failure
+            // to retry on every refresh: the subscription stays, with nothing more to bring in, and
+            // the replies already fetched stay with it.
+            guard case .status(let code, _) = error, code == 404 || code == 410 else { throw error }
+            outcome.isComplete = true
+            return outcome
+        }
+        outcome.pagesFetched = 1
+
+        let cutoff = HistoryWindow.cutoff(forDays: historyWindowDays, now: now)
+        let fresh = conversation.descendants.filter { reply in
+            guard !seen.contains(reply.id.rawValue) else { return false }
+            // Outside the window is left alone, as every walk leaves it. It is not recorded as
+            // seen either, so widening the window later brings it in.
+            if let cutoff, reply.createdAt < cutoff { return false }
+            return true
+        }
+
+        // The whole conversation is the page: a reply answers the post or another reply, and both
+        // are in hand, so its parent costs a request only when it is the subscribed post itself.
+        let parents = await replyParents(
+            for: fresh,
+            onPage: conversation.ancestors + conversation.descendants,
+            budget: budget
+        )
+        let items = fresh.map { reply in
+            map(
+                reply,
+                replyParent: ReplyParentResolver.contextLookup(for: reply, replyParents: parents),
+                replySubscriptionID: subscriptionID
+            )
+        }
+
+        var seenNow = seen
+        for reply in conversation.descendants {
+            if let cutoff, reply.createdAt < cutoff { continue }
+            seenNow.insert(reply.id.rawValue)
+        }
+
+        outcome.lateArrivals = try await sink.commit(
+            items: items,
+            accountID: accountID,
+            streamKey: streamKey,
+            resumeContinuation: "",
+            pendingHighestSeenID: ""
+        )
+        outcome.itemsWritten = items.count
+        outcome.isComplete = true
+
+        try await sink.completeRun(
+            accountID: accountID,
+            streamKey: streamKey,
+            highestSeenID: Self.encodeSeenIDs(seenNow),
+            historyWindowDays: historyWindowDays
+        )
+        return outcome
+    }
+
+    /// The cursor stream for one subscription. Matches `ReplySubscription.streamKey`, which is what
+    /// removing a subscription deletes.
+    public static func repliesStreamKey(for subscriptionID: UUID) -> String {
+        ReplySubscription.streamKey(for: subscriptionID)
+    }
+
+    /// The reply ids a completed run recorded. See ``ingestReplies(to:subscriptionID:budget:historyWindowDays:now:)``.
+    ///
+    /// Comma-separated, which no Mastodon id contains. Never empty once a run has completed: a
+    /// conversation with no replies yet is recorded as the separator alone, so that the first reply
+    /// to arrive afterwards is not mistaken for part of a first walk.
+    static func decodeSeenIDs(_ raw: String) -> Set<String> {
+        Set(raw.split(separator: ",").map(String.init))
+    }
+
+    static func encodeSeenIDs(_ ids: Set<String>) -> String {
+        ids.isEmpty ? "," : ids.sorted().joined(separator: ",")
     }
 
     // MARK: - Walking
@@ -298,7 +428,12 @@ public struct MastodonIngestPlanner: Sendable {
     ///
     /// - Parameter replyParent: What to show above the post — the post it quotes or replies to —
     ///   or nil when nothing looked. See ``IngestedItem/replyParent``.
-    func map(_ status: MastodonStatus, replyParent: ReplyParentLookup? = nil) -> IngestedItem {
+    /// - Parameter replySubscriptionID: The subscription the post was fetched for, when it was.
+    func map(
+        _ status: MastodonStatus,
+        replyParent: ReplyParentLookup? = nil,
+        replySubscriptionID: UUID? = nil
+    ) -> IngestedItem {
         // A boost's own timestamp and id place it in the timeline, but the content and author
         // shown belong to the status it wraps.
         let display = status.displayStatus
@@ -368,6 +503,7 @@ public struct MastodonIngestPlanner: Sendable {
                 isReblogged: display.reblogged
             ),
             replyParent: replyParent,
+            replySubscriptionID: replySubscriptionID,
             providerID: status.id.rawValue
         )
     }

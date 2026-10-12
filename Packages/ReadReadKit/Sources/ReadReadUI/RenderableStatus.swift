@@ -19,6 +19,10 @@ struct RenderableStatus: Identifiable, Sendable {
     /// does not keep the handle separately.
     var authorHandle: String?
 
+    /// The author's account id on the instance this status was fetched from — which is all an id
+    /// means; see ``ProfileReference``. Nil for a status assembled from the store without a payload.
+    var authorID: String?
+
     var avatarURLString: String?
     var contentHTML: String
 
@@ -74,6 +78,10 @@ struct RenderableStatus: Identifiable, Sendable {
     /// Custom emoji used in the content and the display name, keyed by shortcode.
     var emojis: [String: URL]
 
+    /// The accounts the post mentions, keyed by the profile address its text links them with —
+    /// so tapping a mention can open the profile here rather than the instance's web page.
+    var mentionedProfiles: [String: ProfileReference] = [:]
+
     /// Whether the status's own id on its instance is recoverable.
     ///
     /// False for a row with no stored payload — an item from an older build, or one whose payload
@@ -86,6 +94,17 @@ struct RenderableStatus: Identifiable, Sendable {
     /// A post with no replies and no parent has no thread, and offering one would be a button that
     /// does nothing.
     var hasConversation: Bool { canLoadConversation && (replyCount > 0 || isReply) }
+
+    /// Whose profile tapping the author opens, when the status says.
+    var authorProfile: ProfileReference? {
+        guard let authorID, let authorHandle else { return nil }
+        return ProfileReference(
+            id: authorID,
+            name: authorName,
+            handle: authorHandle,
+            avatarURLString: avatarURLString
+        )
+    }
 }
 
 /// The post being read, decoded once instead of once per redraw.
@@ -179,6 +198,7 @@ extension RenderableStatus {
             id: item.id,
             authorName: item.authorName ?? String(localized: "Unknown"),
             authorHandle: nil,
+            authorID: nil,
             avatarURLString: item.iconURLString,
             contentHTML: item.contentHTML,
             plainText: item.excerpt,
@@ -213,6 +233,7 @@ extension RenderableStatus {
         id = display.id.rawValue
         authorName = display.account.bestDisplayName
         authorHandle = display.account.acct
+        authorID = display.account.id
         avatarURLString = display.account.avatarURLString
         contentHTML = display.content
         plainText = HTMLText.plainText(from: display.content)
@@ -243,6 +264,10 @@ extension RenderableStatus {
         // The account's emoji as well as the status's: a display name is where custom emoji turn
         // up most, and Mastodon lists those on the account rather than on the post.
         emojis = Self.emojiURLs(display.emojis + (display.account.emojis ?? []))
+        mentionedProfiles = Dictionary(
+            display.mentions.map { ($0.url, ProfileReference($0)) },
+            uniquingKeysWith: { first, _ in first }
+        )
     }
 
     /// Custom emoji keyed by shortcode, skipping any whose URL will not parse.

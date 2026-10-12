@@ -4,12 +4,17 @@ import SwiftData
 /// Which synced collection a record belongs to.
 ///
 /// The sync endpoint treats payloads as opaque JSON, so this enum is the *client's* interpretation
-/// of what a record is. Adding a collection therefore needs no server change.
+/// of what a record is. Adding a *field* to a collection therefore needs no server change. Adding a
+/// collection does: the server keeps a list of the ones it accepts and rejects the rest.
 public enum SyncCollection: String, Hashable, Sendable, Codable, CaseIterable {
     case position
     case readLater
     case filter
     case account
+
+    /// A ``ReplySubscription``. Named for the server's collection list, which has to carry it too:
+    /// the endpoint rejects a collection it does not know.
+    case replySubscription
 }
 
 /// A local change waiting to be pushed to the sync endpoint.

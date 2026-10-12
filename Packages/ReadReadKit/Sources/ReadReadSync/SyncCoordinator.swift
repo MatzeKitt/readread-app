@@ -180,7 +180,22 @@ public actor SyncCoordinator {
         return outcome
     }
 
-    /// Sends whatever the outbox holds.
+    /// Sends whatever the outbox holds, one request per collection.
+    ///
+    /// ## Why not one request for everything
+    ///
+    /// The server applies a push as one transaction and rejects it whole, and a rejection drops
+    /// every record that was in it — it will fail identically on retry. That is right for a
+    /// malformed record and badly wrong for a *collection the server does not know yet*, which is
+    /// what every new collection is until the server is updated: a single reply subscription in
+    /// the batch took every reading position and Read Later change queued beside it down too.
+    ///
+    /// Split by collection, a server that refuses one collection can only lose that collection's
+    /// records. The cost is a request per collection that has something queued, which is one
+    /// request on nearly every run — positions are the only thing written while reading.
+    ///
+    /// A rejection does not stop the other collections going out; any other failure does, because
+    /// a server that is down or unreachable for one request is down for the next as well.
     ///
     /// - Returns: How many records left the device.
     @discardableResult
@@ -188,23 +203,39 @@ public actor SyncCoordinator {
         let pending = try await store.pendingPushRecords()
         guard !pending.isEmpty else { return 0 }
 
-        do {
-            _ = try await client.push(pending)
-            try await store.clearPending(pending)
-            return pending.count
-        } catch let error as SyncError {
-            // A rejection is permanent — the record is malformed and will fail identically forever,
-            // so it is dropped rather than left to block everything queued behind it.
-            if case .rejected = error {
-                try await store.failPending(pending, permanent: true)
-            } else {
-                try await store.failPending(pending, permanent: false)
-            }
-            throw error
-        } catch {
-            try await store.failPending(pending, permanent: false)
-            throw error
+        let batches = SyncCollection.allCases.compactMap { collection -> [SyncPushRecord]? in
+            let batch = pending.filter { $0.collection == collection }
+            return batch.isEmpty ? nil : batch
         }
+
+        var pushed = 0
+        var rejection: SyncError?
+
+        for batch in batches {
+            do {
+                _ = try await client.push(batch)
+                try await store.clearPending(batch)
+                pushed += batch.count
+            } catch let error as SyncError {
+                // A rejection is permanent — the record is malformed, or its collection unknown to
+                // the server, and will fail identically forever — so it is dropped rather than left
+                // to block everything queued behind it.
+                if case .rejected = error {
+                    try await store.failPending(batch, permanent: true)
+                    rejection = rejection ?? error
+                    continue
+                }
+                try await store.failPending(batch, permanent: false)
+                throw error
+            } catch {
+                try await store.failPending(batch, permanent: false)
+                throw error
+            }
+        }
+
+        // Thrown after the other collections have gone out, so it is still reported.
+        if let rejection { throw rejection }
+        return pushed
     }
 
     /// Pushes what is queued **without pulling first**, for the moment the app is leaving.

@@ -757,6 +757,77 @@ public final class AppServices {
         return nil
     }
 
+    // MARK: - Reply subscriptions
+
+    /// What looking up a post to subscribe to came to.
+    public enum ReplyTargetResolution: Sendable, Equatable {
+        case resolved(ReplySubscriptionEditing.Target)
+
+        /// A sentence for the sheet to show. Never carries the underlying error, for the reason
+        /// ``describe(_:)`` gives.
+        case failed(String)
+    }
+
+    /// Finds the post behind a link, as the account that is to follow it knows the post.
+    ///
+    /// Through the account's own instance, with `resolve` — the same step that lets a second
+    /// account act on a post. A link can name a post on any server, and the conversation has to be
+    /// asked for by the id this instance files it under.
+    public func resolveReplyTarget(_ urlString: String, accountID: UUID) async -> ReplyTargetResolution {
+        let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard
+            let url = URL(string: trimmed),
+            let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http",
+            url.host() != nil
+        else {
+            return .failed(String(localized: "That is not a link to a post."))
+        }
+
+        guard let account = account(withID: accountID) else {
+            return .failed(String(localized: "That account is no longer set up."))
+        }
+
+        let client: MastodonClient
+        do {
+            guard case .mastodon(_, let connected) = try AccountConnections().connect(account) else {
+                return .failed(String(localized: "Replies can only be followed with a Mastodon account."))
+            }
+            client = connected
+        } catch {
+            return .failed(String(localized: "\(account.displayName) is signed out. Sign in again to follow replies with it."))
+        }
+
+        do {
+            guard let status = try await client.resolveStatus(url: url) else {
+                return .failed(String(localized: "\(account.displayName)'s server cannot find a post at that address."))
+            }
+            // The displayed status, as everywhere a post is acted on: a link to a boost is a link
+            // to the post it carries, and the boost itself has no replies.
+            let post = status.displayStatus
+            return .resolved(ReplySubscriptionEditing.Target(
+                accountID: account.id,
+                statusID: post.id.rawValue,
+                statusURLString: post.url ?? post.uri
+            ))
+        } catch MastodonError.tokenRevoked {
+            return .failed(String(localized: "\(account.displayName) is no longer authorised. Sign in to it again."))
+        } catch {
+            return .failed(String(localized: "Could not reach \(account.displayName)'s server."))
+        }
+    }
+
+    /// Lets the rest of the app catch up with a subscription that was just made, changed or removed.
+    ///
+    /// The record goes out on the debounced push like any other local change. The Mastodon refresh
+    /// is what fills a new subscription's list now rather than at the next tick, which for a post
+    /// the reader is looking at would read as the subscription not having worked.
+    public func replySubscriptionsChanged() {
+        syncSoon()
+        Task { [coordinator] in
+            await coordinator.refresh(.mastodonFeeds, trigger: .manual)
+        }
+    }
+
     /// Says that a row cannot be acted on, in the same words every other such failure uses.
     ///
     /// For the two actions that open something before they do anything — the reply composer and the

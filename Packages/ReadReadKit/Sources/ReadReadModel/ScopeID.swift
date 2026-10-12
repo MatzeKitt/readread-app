@@ -44,12 +44,20 @@ public enum ScopeID: Hashable, Sendable, Codable, RawRepresentable {
     /// direction.
     case filtered
 
+    /// The replies a ``ReplySubscription`` has brought in, addressed by its id.
+    ///
+    /// Inside the account's home timeline, which is where those replies are written, so a position
+    /// propagates between the two like it does between a feed and its folder. See
+    /// ``ThresholdService/containedScopes(of:in:)``.
+    case replySubscription(UUID)
+
     // MARK: - RawRepresentable
 
     private enum Prefix {
         static let folder = "folder:"
         static let source = "source:"
         static let mastodonHome = "mastodon-home:"
+        static let replySubscription = "reply-subscription:"
     }
 
     public init?(rawValue: String) {
@@ -72,6 +80,9 @@ public enum ScopeID: Hashable, Sendable, Codable, RawRepresentable {
             } else if let id = rawValue.dropping(prefix: Prefix.mastodonHome),
                       let uuid = UUID(uuidString: id) {
                 self = .mastodonHome(accountID: uuid)
+            } else if let id = rawValue.dropping(prefix: Prefix.replySubscription),
+                      let uuid = UUID(uuidString: id) {
+                self = .replySubscription(uuid)
             } else {
                 return nil
             }
@@ -94,6 +105,8 @@ public enum ScopeID: Hashable, Sendable, Codable, RawRepresentable {
             Prefix.source + id
         case .mastodonHome(let accountID):
             Prefix.mastodonHome + accountID.uuidString
+        case .replySubscription(let id):
+            Prefix.replySubscription + id.uuidString
         }
     }
 

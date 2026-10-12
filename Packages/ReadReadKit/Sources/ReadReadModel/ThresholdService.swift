@@ -242,6 +242,19 @@ public enum ThresholdService {
             raise(source.scope, toAtLeast: floor, asOf: floorReportedAt)
         }
 
+        // After the sources, so a subscription is measured against its home timeline's repaired
+        // position — the same order as folders before feeds, one level further down.
+        for subscription in try ReplySubscription.all(in: context) {
+            let home = ScopeID.mastodonHome(accountID: subscription.accountID)
+            var floor = all
+            var floorReportedAt = allReportedAt
+            if markSortKey(home) > floor {
+                floor = markSortKey(home)
+                floorReportedAt = reportedAt(home)
+            }
+            raise(subscription.scope, toAtLeast: floor, asOf: floorReportedAt)
+        }
+
         return repaired
     }
 
@@ -261,14 +274,22 @@ public enum ThresholdService {
         case .all:
             let sources = try subscribedSources(in: context)
             let folders = Set(sources.compactMap(\.folderName)).sorted()
-            return sources.map(\.scope) + folders.map(ScopeID.folder)
+            let subscriptions = try ReplySubscription.all(in: context).map(\.scope)
+            return sources.map(\.scope) + folders.map(ScopeID.folder) + subscriptions
 
         case .folder(let name):
             return try subscribedSources(in: context)
                 .filter { $0.folderName == name }
                 .map(\.scope)
 
-        case .source, .mastodonHome, .lateArrivals, .readLater, .filtered:
+        case .mastodonHome(let accountID):
+            // A subscription's replies are written into the home timeline, so reading the home
+            // timeline past a point has carried every subscription of the account past it too.
+            return try ReplySubscription.all(in: context)
+                .filter { $0.accountID == accountID }
+                .map(\.scope)
+
+        case .source, .replySubscription, .lateArrivals, .readLater, .filtered:
             return []
         }
     }
@@ -290,6 +311,12 @@ public enum ThresholdService {
                 let folder = try source(withID: sourceID, in: context)?.folderName
             else { return [.all] }
             return [.all, .folder(folder)]
+
+        case .replySubscription(let id):
+            // The same fallback as a feed's: a subscription this device has not heard of yet is
+            // still a list of items in `All Items`.
+            guard let subscription = try ReplySubscription.find(id, in: context) else { return [.all] }
+            return [.all, .mastodonHome(accountID: subscription.accountID)]
         }
     }
 
@@ -546,7 +573,7 @@ public enum SourceIdentifier {
             return id
         case .mastodonHome(let accountID):
             return mastodonHome(accountID: accountID)
-        case .all, .folder, .readLater, .lateArrivals, .filtered:
+        case .all, .folder, .replySubscription, .readLater, .lateArrivals, .filtered:
             return nil
         }
     }

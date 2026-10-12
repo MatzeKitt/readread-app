@@ -22,7 +22,25 @@ struct StatusReaderView: View {
     /// once per post being read, not once per cell while scrolling.
     @Query private var accounts: [AccountRecord]
 
+    /// Every reply subscription, for the toolbar's Subscribe button and for finding the conversation
+    /// a followed reply belongs to. Affordable here for the reason `accounts` is.
+    @Query private var replySubscriptions: [ReplySubscription]
+
+    @Environment(AppServices.self) private var services
+
+    /// Where the subscription sheet is presented. Optional, like everywhere else it is read.
+    @Environment(StatusComposer.self) private var composer: StatusComposer?
+
+    /// Where a tapped author's profile is presented. Optional for the same reason.
+    @Environment(ProfileViewerModel.self) private var profiles: ProfileViewerModel?
+
     @State private var thread = StatusThreadLoader()
+
+    /// This post as its account's instance knows it, for subscribing to its replies.
+    ///
+    /// Worked out once per post rather than per redraw: it decodes the stored payload. Nil for a
+    /// row without one, which has nothing to subscribe to.
+    @State private var subscriptionTarget: ReplySubscriptionEditing.Target?
 
     private var status: RenderableStatus { RenderableStatusCache.status(for: item) }
 
@@ -30,19 +48,42 @@ struct StatusReaderView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    ancestors
+                    if let conversation {
+                        wholeConversation(conversation)
+                    } else {
+                        ancestors
 
-                    StatusCard(status: status, emphasis: .focused, row: item)
-                        .id(Self.focusedAnchor)
+                        StatusCard(status: status, emphasis: .focused, row: item)
+                            .environment(\.openProfile, openProfile(as: item.accountID))
+                            .id(Self.focusedAnchor)
 
-                    threadFooter
+                        threadFooter
+                    }
                 }
                 .padding(20)
                 .frame(maxWidth: 640, alignment: .leading)
                 .frame(maxWidth: .infinity)
+                // The posts around the one being read came through whichever account the thread was
+                // loaded with; the stored ones override this with the item's own below.
+                .environment(\.openProfile, openProfile(as: thread.accountID ?? item.accountID))
             }
             .onChange(of: thread.state) { _, state in
-                guard case .loaded(let ancestors, _) = state, !ancestors.isEmpty else { return }
+                guard case .loaded(let ancestors, _) = state else { return }
+
+                if conversation != nil {
+                    // The reply being read is somewhere down a whole conversation, which in a lazy
+                    // stack has not been laid out yet. Asked twice, as the timeline's restore does:
+                    // the first scroll lands on an estimate of where the rows above end, and the
+                    // second, once they have been measured, on the reply itself.
+                    proxy.scrollTo(Self.focusedAnchor, anchor: .top)
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(80))
+                        proxy.scrollTo(Self.focusedAnchor, anchor: .top)
+                    }
+                    return
+                }
+
+                guard !ancestors.isEmpty else { return }
                 // The post you chose must stay the post you are looking at. Ancestors are inserted
                 // *above* it, so without pinning it back the pane would silently scroll up into
                 // somebody else's reply.
@@ -64,7 +105,11 @@ struct StatusReaderView: View {
                     placement: .toolbar
                 )
 
-                if status.hasConversation, !settings.reading.loadsMastodonThreads {
+                if subscriptionTarget != nil {
+                    subscriptionButton
+                }
+
+                if status.hasConversation, !settings.reading.loadsMastodonThreads, conversationRoot == nil {
                     Button("Show Conversation", systemImage: "bubble.left.and.bubble.right") {
                         thread.load(for: item, in: modelContext)
                     }
@@ -77,9 +122,126 @@ struct StatusReaderView: View {
             // Reset first: the loader outlives the item, so without this the previous post's
             // thread would sit under the new one until its own fetch replaced it.
             thread.reset()
+            subscriptionTarget = StatusComposer.subscriptionTarget(for: item)
+
+            // A followed reply is read inside its conversation whatever the thread setting says:
+            // seeing the other answers is what subscribing to them was for.
+            if let root = conversationRoot {
+                thread.loadConversation(
+                    rootStatusID: root.statusID,
+                    accountID: root.accountID,
+                    focusing: item,
+                    in: modelContext
+                )
+                return
+            }
+
             guard settings.reading.loadsMastodonThreads, status.hasConversation else { return }
             thread.load(for: item, in: modelContext)
         }
+    }
+
+    // MARK: - Subscribing
+
+    /// The subscription this post came in through, when it is a followed reply.
+    private var conversationRoot: ReplySubscription? {
+        guard let id = item.replySubscriptionID else { return nil }
+        return replySubscriptions.first { $0.id == id }
+    }
+
+    /// The subscription following this post's own replies, if there is one.
+    private var ownSubscription: ReplySubscription? {
+        guard let subscriptionTarget else { return nil }
+        return replySubscriptions.first {
+            $0.accountID == subscriptionTarget.accountID && $0.statusID == subscriptionTarget.statusID
+        }
+    }
+
+    /// Subscribe, or unsubscribe once subscribed.
+    ///
+    /// One button whose title and glyph change, rather than two buttons swapped by an `if`: a
+    /// toolbar item that changes identity animates itself out and back in. Filled when subscribed,
+    /// which is the convention Like follows — the outline is the offer, the fill is the state.
+    ///
+    /// Unsubscribing asks nothing. It is undone by subscribing again, which walks the conversation
+    /// from the start, and the replies it brought in stay in the home timeline either way.
+    private var subscriptionButton: some View {
+        let subscription = ownSubscription
+        let title: LocalizedStringKey = subscription == nil ? "Subscribe to Replies…" : "Unsubscribe from Replies"
+
+        return Button(title, systemImage: subscription == nil ? "bell" : "bell.fill") {
+            if let subscription {
+                unsubscribe(subscription)
+            } else if composer?.subscribe(to: item) != true {
+                services.reportUnusableStatus()
+            }
+        }
+        .toolbarButtonHelp(title)
+    }
+
+    private func unsubscribe(_ subscription: ReplySubscription) {
+        do {
+            try ReplySubscriptionEditing.unsubscribe(subscription, in: modelContext)
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            return
+        }
+        services.replySubscriptionsChanged()
+    }
+
+    // MARK: - A whole conversation
+
+    /// A followed reply's conversation, loaded from the subscribed post, with the reply in it.
+    private struct Conversation {
+        var above: [RenderableStatus]
+        var replies: [RenderableStatus]
+        var focusID: String
+    }
+
+    /// The loaded conversation, when the reply being read is in it.
+    ///
+    /// Nil while it loads, and when the reply is not among the descendants — deleted since, or
+    /// withheld by the instance — in which case the ordinary layout shows the post with the
+    /// conversation's replies below it, rather than the reader's reply disappearing from its own
+    /// pane.
+    private var conversation: Conversation? {
+        guard
+            case .loaded(let above, let replies) = thread.state,
+            let focusID = thread.focusStatusID,
+            replies.contains(where: { $0.id == focusID })
+        else { return nil }
+        return Conversation(above: above, replies: replies, focusID: focusID)
+    }
+
+    @ViewBuilder
+    private func wholeConversation(_ conversation: Conversation) -> some View {
+        ForEach(conversation.above) { post in
+            StatusCard(status: post, emphasis: .context)
+        }
+
+        Divider().padding(.vertical, 12)
+
+        ForEach(conversation.replies) { reply in
+            Group {
+                if reply.id == conversation.focusID {
+                    // The store's copy rather than the network's, so the counts under the toolbar's
+                    // Like are the ones the action writes to — see `StatusCard.row`.
+                    StatusCard(status: status, emphasis: .focused, row: item)
+                        .environment(\.openProfile, openProfile(as: item.accountID))
+                        .id(Self.focusedAnchor)
+                } else {
+                    StatusCard(status: reply, emphasis: .context)
+                }
+            }
+            .padding(.leading, Self.indent(forDepth: thread.depths[reply.id] ?? 1))
+        }
+    }
+
+    /// How far a reply is set in for its depth. Capped, because a long back-and-forth between two
+    /// people would otherwise walk off the side of an iPhone.
+    private static func indent(forDepth depth: Int) -> CGFloat {
+        CGFloat(min(max(depth - 1, 0), 4)) * 16
     }
 
     private static let focusedAnchor = "focused-status"
@@ -111,7 +273,16 @@ struct StatusReaderView: View {
 
         if let stored = RenderableStatusCache.parent(for: item), item.replyParentIsQuote || !isThreadLoaded {
             StatusCard(status: stored, emphasis: .context)
+                .environment(\.openProfile, openProfile(as: item.accountID))
         }
+    }
+
+    // MARK: - Profiles
+
+    /// Opens a profile through `accountID` — the account whose instance the author's id came from.
+    private func openProfile(as accountID: UUID) -> OpenProfileAction? {
+        guard let profiles else { return nil }
+        return OpenProfileAction { profiles.open($0, as: accountID) }
     }
 
     @ViewBuilder
@@ -159,6 +330,9 @@ struct StatusCard: View {
         case focused
         /// A post above or below it in the conversation.
         case context
+        /// One of a list of posts that are each read for themselves, like a profile's. Sized like
+        /// a context card, but at full strength and with its timestamp linking to the post.
+        case listed
     }
 
     let status: RenderableStatus
@@ -180,6 +354,7 @@ struct StatusCard: View {
     @State private var isRevealed = false
 
     @Environment(\.openURL) private var openURL
+    @Environment(\.openProfile) private var openProfile
     @Environment(SettingsModel.self) private var settings
 
     private var contentScale: TextScale { settings.reading.contentScale }
@@ -249,7 +424,7 @@ struct StatusCard: View {
             emphasis == .focused ? SurfaceFill.current : SurfaceFill.clear,
             in: .rect(cornerRadius: 12)
         )
-        .opacity(emphasis == .focused ? 1 : 0.85)
+        .opacity(emphasis == .context ? 0.85 : 1)
         .task(id: status.id) {
             // A recycled card must not carry the previous post's revealed state onto a new one —
             // that would show a content warning's contents without anyone asking.
@@ -258,6 +433,38 @@ struct StatusCard: View {
     }
 
     private var header: some View {
+        HStack(spacing: 10) {
+            author
+
+            Spacer(minLength: 8)
+
+            timestamp
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .layoutPriority(1)
+        }
+    }
+
+    /// The avatar and the name, which open the author's profile where there is one to open.
+    ///
+    /// The whole pair rather than the name alone, because the picture is the bigger target and is
+    /// where a reader's thumb goes looking for "who is this".
+    @ViewBuilder
+    private var author: some View {
+        if let openProfile, let profile = status.authorProfile {
+            Button {
+                openProfile(profile)
+            } label: {
+                authorLabel.contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Shows the profile")
+        } else {
+            authorLabel
+        }
+    }
+
+    private var authorLabel: some View {
         HStack(spacing: 10) {
             SourceIcon(
                 urlString: status.avatarURLString,
@@ -281,13 +488,6 @@ struct StatusCard: View {
                         .lineLimit(1)
                 }
             }
-
-            Spacer(minLength: 8)
-
-            timestamp
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .layoutPriority(1)
         }
     }
 
@@ -310,7 +510,7 @@ struct StatusCard: View {
         let label = Text(status.createdAt, format: .relative(presentation: .numeric, unitsStyle: .abbreviated))
         let spoken = Text(status.createdAt, format: .relative(presentation: .numeric, unitsStyle: .wide))
 
-        if emphasis == .focused, let url = status.url {
+        if emphasis != .context, let url = status.url {
             Link(destination: url) { label }
                 // The pane's own colours, not the link colour: this is a timestamp that happens to
                 // be tappable, and painting it as a link would make the loudest thing in the
@@ -355,6 +555,17 @@ struct StatusCard: View {
             // accent blue through every post.
             .tint(StatusTextCache.linkColor)
             .frame(maxWidth: .infinity, alignment: .leading)
+            // A mention opens the person's profile here. Everything else goes on to the window's
+            // own handler, which decides between the in-app browser and the system — returning
+            // `.systemAction` instead would skip that decision.
+            .environment(\.openURL, OpenURLAction { url in
+                if let openProfile, let profile = status.mentionedProfiles[url.absoluteString] {
+                    openProfile(profile)
+                } else {
+                    openURL(url)
+                }
+                return .handled
+            })
 
         if let poll = status.poll {
             PollView(poll: poll, contentScale: contentScale)

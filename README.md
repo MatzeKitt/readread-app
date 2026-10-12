@@ -20,11 +20,12 @@ Not shipped as a product; this is a personal app kept in a state where someone e
 - **Reader view** with the article extracted from the page, optional full-page loading per feed,
   and, for WordPress sites that advertise it, the post's comments.
 - **Mastodon as a first-class timeline**: threads, polls, custom emoji, media viewer, like and
-  boost.
+  boost, profiles with their posts, followers and following — and **reply subscriptions**, which bring the replies to any post into the timeline and
+  give each followed conversation a sidebar list of its own.
 - **Refreshes in the background** on iOS via `BGTaskScheduler`, with a badge that only publishes
   after a complete run.
-- **Self-hosted sync** for positions, Read Later, filter rules and the account list. Credentials
-  never leave the device's Keychain — see [server/README.md](server/README.md).
+- **Self-hosted sync** for positions, Read Later, filter rules, reply subscriptions and the account
+  list. Credentials never leave the device's Keychain — see [server/README.md](server/README.md).
 
 ## Requirements
 

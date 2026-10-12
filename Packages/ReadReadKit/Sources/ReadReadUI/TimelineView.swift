@@ -649,13 +649,36 @@ struct RefreshToolbarButton: View {
         // platforms saying the same thing in the same shape is worth more than the Mac having its
         // own flourish.
         //
-        // Swapping the whole item changes its identity, so it crossfades rather than morphing.
-        // That is the intended reading here: the button is gone for as long as the work runs.
-        //
         // Deliberately *not* gated on Reduce Motion, which the Mac's spin was. A spinner is not
         // decoration dressing up a disabled button — while it is up it is the only thing on screen
         // saying the app is working, and a progress indicator is the platform's own idiom for
         // exactly that, on both platforms, whatever the motion setting says.
+        #if os(macOS)
+        // Laid over the button rather than swapped in for it, which is what the Mac did too until
+        // the whole strip flickered at the start and end of every refresh. A different view in the
+        // same `ToolbarItem` is a different `NSToolbarItem` to SwiftUI: it removed the item and
+        // inserted a new one under a fresh identifier each time, and the toolbar re-laid every
+        // platter around it. With the button always there and only hidden, the item, its view and
+        // its platter all stay put, and the spinner is the one thing that changes. On the Mac the
+        // button is hosted as a real view, so the overlay renders. iOS keeps the swap below: a
+        // bare button there becomes a `UIBarButtonItem`, which takes its image and nothing laid
+        // over it.
+        //
+        // The button keeps its footprint while hidden, so the padding the swap needs is not
+        // needed here. Disabled, so ⌘R does not start a second run behind the spinner.
+        button
+            .opacity(services.isRefreshing ? 0 : 1)
+            .disabled(services.isRefreshing)
+            .overlay {
+                if services.isRefreshing {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityLabel("Refreshing")
+                }
+            }
+        #else
+        // Swapping the whole item changes its identity, so it crossfades rather than morphing.
+        // That is the intended reading here: the button is gone for as long as the work runs.
         if services.isRefreshing {
             ProgressView()
                 .controlSize(.small)
@@ -669,6 +692,7 @@ struct RefreshToolbarButton: View {
         } else {
             button
         }
+        #endif
     }
 
     private var button: some View {
@@ -813,6 +837,8 @@ struct TimelineView: View {
         case .folder(let name): name
         case .mastodonHome: String(localized: "Home")
         case .source(let id): sourceTitle(for: id) ?? String(localized: "Feed")
+        case .replySubscription(let id):
+            (try? ReplySubscription.find(id, in: modelContext))?.title ?? String(localized: "Replies")
         }
     }
 
@@ -871,6 +897,10 @@ private struct TimelineQueryHost: View {
     /// scrolling.
     @Query private var accounts: [AccountRecord]
 
+    /// The reply subscriptions, so a followed reply's row can name the conversation it is in. A
+    /// handful at most, and queried here for the reason `sources` is.
+    @Query private var replySubscriptions: [ReplySubscription]
+
     init(
         scope: ScopeID,
         selectedItemID: Binding<String?>,
@@ -897,7 +927,8 @@ private struct TimelineQueryHost: View {
             items: items,
             sources: sources,
             readLaterEntries: readLaterEntries,
-            accounts: accounts
+            accounts: accounts,
+            replySubscriptions: replySubscriptions
         )
     }
 }
@@ -954,6 +985,7 @@ private struct TimelineList: View {
     let sources: [CachedSource]
     let readLaterEntries: [ReadLaterEntry]
     let accounts: [AccountRecord]
+    let replySubscriptions: [ReplySubscription]
 
     @Environment(\.modelContext) private var modelContext
     @Environment(SettingsModel.self) private var settings
@@ -1020,6 +1052,7 @@ private struct TimelineList: View {
     @State private var sourceTitles: [String: String] = [:]
     @State private var sourceIcons: [String: String] = [:]
     @State private var savedItemIDs: Set<String> = []
+    @State private var replySubscriptionTitles: [UUID: String] = [:]
 
 
     private static func titles(of sources: [CachedSource]) -> [String: String] {
@@ -1180,6 +1213,7 @@ private struct TimelineList: View {
                         item: item,
                         sourceTitle: sourceTitles[item.sourceID],
                         sourceIconURLString: sourceIcons[item.sourceID],
+                        replySubscriptionTitle: item.replySubscriptionID.flatMap { replySubscriptionTitles[$0] },
                         // Every row in Older Items shares that state, so the badge would be noise
                         // rather than the explanation it is in a mixed timeline.
                         showsLateArrival: !isLateArrivalList && settings.reading.showsLateArrivalBadges,
@@ -1360,6 +1394,14 @@ private struct TimelineList: View {
             }
             .task(id: readLaterEntries.count) {
                 savedItemIDs = Set(readLaterEntries.map(\.itemID))
+            }
+            // Keyed on the titles as well as the ids, unlike the sources above: renaming a
+            // subscription is the main thing the reader does to one, and the rows should follow.
+            .task(id: replySubscriptions.map { "\($0.id)|\($0.title)" }) {
+                replySubscriptionTitles = Dictionary(
+                    replySubscriptions.map { ($0.id, $0.title) },
+                    uniquingKeysWith: { first, _ in first }
+                )
             }
             .onDisappear {
                 // Written now rather than left pending, and this is not belt-and-braces: the

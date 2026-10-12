@@ -115,16 +115,27 @@ public enum MastodonVisibility: String, Codable, Sendable, CaseIterable {
 
 /// How the acting account stands towards another account.
 ///
-/// Only the fields this app acts on. The endpoint returns a great deal more — following, blocking,
-/// notes, domain blocks — and decoding what is never read would make the type look like a surface
-/// the app has, which it does not.
+/// Only the fields this app acts on: muting, and following. The endpoint returns a great deal more —
+/// blocking, notes, domain blocks — and decoding what is never read would make the type look like a
+/// surface the app has, which it does not.
+///
+/// Every flag is documented as always present; each is optional so an instance that omits one
+/// cannot fail the decode of a request that otherwise succeeded.
 public struct MastodonRelationship: Codable, Sendable {
 
     public let id: String
 
-    /// Documented as always present; optional so an instance that omits it cannot fail the decode
-    /// of a request that otherwise succeeded.
     public let muting: Bool?
+
+    /// The acting account follows this one.
+    public let following: Bool?
+
+    /// The acting account has asked to follow, and the account — which approves its followers —
+    /// has not answered yet.
+    public let requested: Bool?
+
+    /// This account follows the acting one.
+    public let followedBy: Bool?
 }
 
 /// One page of a timeline, plus where to continue.
@@ -154,6 +165,22 @@ public struct MastodonNotificationPage: Sendable {
 
     public init(notifications: [MastodonNotification], nextMaxID: String?) {
         self.notifications = notifications
+        self.nextMaxID = nextMaxID
+    }
+}
+
+/// One page of an account list — followers or following — plus where to continue.
+public struct MastodonAccountPage: Sendable {
+
+    public var accounts: [MastodonAccount]
+
+    /// The `max_id` for the next page, from the `Link` header. Not an account id: the server pages
+    /// these lists by the follow relationship's own id, which is why it can only come from the
+    /// header. Nil means there is nothing further.
+    public var nextMaxID: String?
+
+    public init(accounts: [MastodonAccount], nextMaxID: String?) {
+        self.accounts = accounts
         self.nextMaxID = nextMaxID
     }
 }
@@ -297,6 +324,127 @@ public actor MastodonClient {
         }
     }
 
+    // MARK: - Profiles
+
+    /// The largest page the API allows for an account list. Twice a timeline's.
+    public static let maxAccountListLimit = 80
+
+    /// Fetches an account's profile.
+    ///
+    /// - Parameter id: The account's id **on this instance**, as for ``mute(_:notifications:)``.
+    public func profile(_ id: String) async throws -> MastodonProfile {
+        try await get("api/v1/accounts/\(id)", query: [], as: MastodonProfile.self)
+    }
+
+    /// Fetches one page of an account's posts, newest first.
+    ///
+    /// `GET /api/v1/accounts/:id/statuses`. Boosts are included and replies are not, which is what
+    /// Mastodon's own profile shows under Posts: a profile is read to find out what someone says,
+    /// and their half of other people's conversations reads as non sequiturs out of context.
+    ///
+    /// For a remote account this is what the asking instance holds, which can be fewer posts than
+    /// the count says.
+    public func accountStatuses(
+        _ id: String,
+        limit: Int = maxTimelineLimit,
+        maxID: String? = nil
+    ) async throws -> MastodonTimelinePage {
+        var query = [
+            URLQueryItem(name: "exclude_replies", value: "true"),
+            URLQueryItem(name: "limit", value: String(min(limit, Self.maxTimelineLimit))),
+        ]
+        if let maxID, !maxID.isEmpty {
+            query.append(URLQueryItem(name: "max_id", value: maxID))
+        }
+
+        let (statuses, next) = try await page(
+            "api/v1/accounts/\(id)/statuses",
+            query: query,
+            as: [MastodonStatus].self
+        )
+        return MastodonTimelinePage(statuses: statuses, nextMaxID: next)
+    }
+
+    /// Fetches one page of the accounts following this one.
+    public func followers(
+        of id: String,
+        limit: Int = maxAccountListLimit,
+        maxID: String? = nil
+    ) async throws -> MastodonAccountPage {
+        try await accountList("api/v1/accounts/\(id)/followers", limit: limit, maxID: maxID)
+    }
+
+    /// Fetches one page of the accounts this one follows.
+    public func following(
+        of id: String,
+        limit: Int = maxAccountListLimit,
+        maxID: String? = nil
+    ) async throws -> MastodonAccountPage {
+        try await accountList("api/v1/accounts/\(id)/following", limit: limit, maxID: maxID)
+    }
+
+    /// Fetches an account's pinned posts.
+    ///
+    /// Not paged: an account can pin only a handful, and the instance returns them all at once. For
+    /// a remote account, only the pins the asking instance has fetched.
+    public func pinnedStatuses(_ id: String) async throws -> [MastodonStatus] {
+        try await get(
+            "api/v1/accounts/\(id)/statuses",
+            query: [URLQueryItem(name: "pinned", value: "true")],
+            as: [MastodonStatus].self
+        )
+    }
+
+    /// How the acting account stands towards another one, or nil if the instance says nothing.
+    ///
+    /// `GET /api/v1/accounts/relationships` needs `read:follows`, which was added to the scopes
+    /// together with following. A token granted before that answers 403, reported as
+    /// ``MastodonError/writeNotAuthorized``: it is the read half of the same missing grant, and the
+    /// fix is the same re-authorisation.
+    public func relationship(with id: String) async throws -> MastodonRelationship? {
+        let reply = try await authorizedReply(
+            for: try request(path: "api/v1/accounts/relationships", query: [URLQueryItem(name: "id[]", value: id)]),
+            forbidden: .writeNotAuthorized
+        )
+        do {
+            return try JSONDecoder.mastodon.decode([MastodonRelationship].self, from: reply.data)
+                .first { $0.id == id }
+        } catch let error as DecodingError {
+            throw MastodonError.unexpectedResponse(String(describing: error))
+        }
+    }
+
+    /// Follows an account, or stops following it.
+    ///
+    /// Following an account that approves its followers sends a request instead, which the returned
+    /// relationship reports as ``MastodonRelationship/requested``. Unfollowing withdraws a request
+    /// that has not been answered yet, so the one call covers both ways of taking it back.
+    ///
+    /// - Parameter id: The account's id **on this instance**, as for ``mute(_:notifications:)``.
+    public func follow(_ id: String, isOn: Bool) async throws -> MastodonRelationship {
+        var request = try request(path: "api/v1/accounts/\(id)/\(isOn ? "follow" : "unfollow")", query: [])
+        request.httpMethod = "POST"
+        // No parameters: the defaults — boosts shown, no notifications for every post — are what
+        // following someone means in Mastodon's own interface.
+        request.setValue("0", forHTTPHeaderField: "Content-Length")
+
+        let reply = try await authorizedReply(for: request, forbidden: .writeNotAuthorized)
+        do {
+            return try JSONDecoder.mastodon.decode(MastodonRelationship.self, from: reply.data)
+        } catch let error as DecodingError {
+            throw MastodonError.unexpectedResponse(String(describing: error))
+        }
+    }
+
+    private func accountList(_ path: String, limit: Int, maxID: String?) async throws -> MastodonAccountPage {
+        var query = [URLQueryItem(name: "limit", value: String(min(limit, Self.maxAccountListLimit)))]
+        if let maxID, !maxID.isEmpty {
+            query.append(URLQueryItem(name: "max_id", value: maxID))
+        }
+        let (accounts, next) = try await page(path, query: query, as: [MastodonAccount].self)
+        return MastodonAccountPage(accounts: accounts, nextMaxID: next)
+    }
+
     // MARK: - Favouriting and boosting
 
     /// Favourites a status, or takes it back.
@@ -343,6 +491,30 @@ public actor MastodonClient {
             as: MastodonSearchResults.self
         )
         return results.statuses.first
+    }
+
+    /// Finds the id this instance files an account under, given an address for it.
+    ///
+    /// The account counterpart of ``resolveStatus(url:)``, for following as an account other than
+    /// the one a profile was opened through: an account id is as local to its instance as a status
+    /// id is.
+    ///
+    /// - Parameter query: The account's ActivityPub URI, or its `user@domain` handle. Both resolve
+    ///   through `search` with `resolve=true`, which fetches the account if the instance has never
+    ///   seen it.
+    /// - Returns: The account as this instance holds it, or nil if it will not resolve one.
+    public func resolveAccount(_ query: String) async throws -> MastodonAccount? {
+        let results = try await get(
+            "api/v2/search",
+            query: [
+                URLQueryItem(name: "q", value: query),
+                URLQueryItem(name: "resolve", value: "true"),
+                URLQueryItem(name: "type", value: "accounts"),
+                URLQueryItem(name: "limit", value: "1"),
+            ],
+            as: MastodonSearchResults.self
+        )
+        return results.accounts?.first
     }
 
     // MARK: - Muting
@@ -501,6 +673,21 @@ public actor MastodonClient {
         }
     }
 
+    /// A `GET` that pages, with the `max_id` of its `rel="next"` link.
+    private func page<Value: Decodable & Sendable>(
+        _ path: String,
+        query: [URLQueryItem],
+        as type: Value.Type
+    ) async throws -> (Value, nextMaxID: String?) {
+        let reply = try await authorizedReply(for: try request(path: path, query: query))
+        do {
+            let value = try JSONDecoder.mastodon.decode(Value.self, from: reply.data)
+            return (value, Self.maxID(fromLinkHeader: reply.header("Link")))
+        } catch let error as DecodingError {
+            throw MastodonError.unexpectedResponse(String(describing: error))
+        }
+    }
+
     /// `POST` to an endpoint that takes no body and answers with a status.
     private func write(_ path: String) async throws -> MastodonStatus {
         var request = try request(path: path, query: [])
@@ -519,8 +706,8 @@ public actor MastodonClient {
 
     /// - Parameter forbidden: What a 403 means for this request, when it can mean a missing scope
     ///   rather than a dead token. Every write can be refused for want of a scope; of the reads,
-    ///   only notifications can, because `read:notifications` is the one `read:` scope added after
-    ///   the first version. On every other read the two are not worth telling apart, and
+    ///   only notifications and relationships can, because `read:notifications` and `read:follows`
+    ///   are the `read:` scopes added after the first version. On every other read the two are not worth telling apart, and
     ///   conflating them there keeps existing error messages intact.
     private func authorizedReply(
         for request: URLRequest,

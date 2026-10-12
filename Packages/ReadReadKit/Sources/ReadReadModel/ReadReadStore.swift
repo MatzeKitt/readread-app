@@ -19,6 +19,7 @@ public enum ReadReadStore {
         PositionMark.self,
         ReadLaterEntry.self,
         FilterRule.self,
+        ReplySubscription.self,
         AccountRecord.self,
         PendingChange.self,
         SyncState.self,

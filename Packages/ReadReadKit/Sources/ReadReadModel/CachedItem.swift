@@ -253,6 +253,17 @@ public final class CachedItem {
     /// not carry.
     public var replyParentPayload: Data?
 
+    /// The ``ReplySubscription`` this reply arrived through, when it did.
+    ///
+    /// A column on the item rather than a source of its own, because the reply is still a post in
+    /// the account's home timeline: it is written there under its own id, so a reply that also
+    /// arrives through the home walk stays one row. This is what the subscription's list and count
+    /// select on, and what the row reads to say it is a reply being followed.
+    ///
+    /// Kept by a re-ingest that does not set it — the home walk knows nothing of subscriptions,
+    /// and seeing the same reply there must not take it out of the list it was subscribed into.
+    public var replySubscriptionID: UUID?
+
     /// The article extracted from the item's own page, when the feed is set to load full pages.
     ///
     /// Cached on the item rather than fetched per view because the fetch is the expensive part —
@@ -301,6 +312,7 @@ public final class CachedItem {
         isReblogged: Bool? = nil,
         linkCard: LinkCard? = nil,
         inReplyToStatusID: String? = nil,
+        replySubscriptionID: UUID? = nil,
         attachments: [Attachment] = [],
         mastodonPayload: Data? = nil,
         fullPageHTML: String? = nil,
@@ -339,6 +351,7 @@ public final class CachedItem {
             self.linkCard = linkCard
         }
         self.inReplyToStatusID = inReplyToStatusID
+        self.replySubscriptionID = replySubscriptionID
         self.attachments = attachments
         self.mastodonPayload = mastodonPayload
         self.fullPageHTML = fullPageHTML

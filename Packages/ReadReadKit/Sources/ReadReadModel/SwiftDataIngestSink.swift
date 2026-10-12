@@ -248,6 +248,12 @@ public actor SwiftDataIngestSink: IngestSink {
             if let lookup = item.replyParent {
                 existing.record(lookup)
             }
+            // Only ever set, never cleared, by ingest: the home walk carries no subscription, and
+            // a reply it sees again must stay in the list it was subscribed into. Removing the
+            // subscription is what clears it.
+            if let subscriptionID = item.replySubscriptionID {
+                existing.replySubscriptionID = subscriptionID
+            }
             return
         }
 
@@ -281,6 +287,7 @@ public actor SwiftDataIngestSink: IngestSink {
             // initialiser is what limits that to statuses.
             linkCard: item.linkCard,
             inReplyToStatusID: item.engagement?.inReplyToStatusID,
+            replySubscriptionID: item.replySubscriptionID,
             attachments: item.attachments,
             mastodonPayload: item.mastodonPayload
         )

@@ -90,6 +90,21 @@ public enum SyncOutbox {
         try enqueueDeletion(collection: .filter, recordID: id.uuidString, in: context)
     }
 
+    // MARK: - Reply subscriptions
+
+    public static func record(_ subscription: ReplySubscription, in context: ModelContext) throws {
+        try enqueue(
+            collection: .replySubscription,
+            recordID: subscription.id.uuidString,
+            payload: ReplySubscriptionPayload(subscription),
+            in: context
+        )
+    }
+
+    public static func recordReplySubscriptionDeletion(id: UUID, in context: ModelContext) throws {
+        try enqueueDeletion(collection: .replySubscription, recordID: id.uuidString, in: context)
+    }
+
     // MARK: - Accounts
 
     /// Queues an account — its servers and usernames, never a credential. See ``AccountPayload``.

@@ -154,6 +154,96 @@ public struct MastodonAccount: Codable, Sendable {
     }
 }
 
+/// An account as its profile shows it: `GET /api/v1/accounts/:id`.
+///
+/// Its own type rather than more optionals on ``MastodonAccount``, which is embedded in every
+/// status and stored with every post. The bio, the header picture and the counts are wanted only
+/// when somebody opens the profile, and carrying them in each stored payload would be weight for
+/// nothing.
+public struct MastodonProfile: Codable, Sendable {
+
+    public let id: String
+    public let username: String
+
+    /// `user` locally, `user@host` for a remote account — see ``MastodonAccount/acct``.
+    public let acct: String
+
+    public let displayName: String
+    public let url: String
+
+    /// The account's ActivityPub address, the same on every instance — the name another of the
+    /// reader's accounts can find it by. Added in Mastodon 4.2, so nil on an older instance.
+    public let uri: String?
+
+    /// Sanitised HTML, in the same small tag set as a status's content.
+    public let note: String
+
+    public let avatar: String
+    public let avatarStatic: String?
+
+    /// The banner. Never null: an account without one is given the instance's own placeholder,
+    /// which ``headerURLString`` filters out.
+    public let header: String
+    public let headerStatic: String?
+
+    /// Follow requests need approval.
+    public let locked: Bool?
+    public let bot: Bool?
+
+    public let createdAt: Date?
+    public let followersCount: Int
+    public let followingCount: Int
+    public let statusesCount: Int
+
+    /// The account has asked its instance not to list whom it follows and who follows it. The
+    /// counts are still sent; the lists come back empty.
+    public let hideCollections: Bool?
+
+    public let emojis: [MastodonCustomEmoji]?
+    public let fields: [Field]?
+
+    /// One row of the profile's key–value table.
+    public struct Field: Codable, Sendable {
+        public let name: String
+
+        /// HTML — usually a single link.
+        public let value: String
+
+        /// When the instance last confirmed the linked page links back to this account.
+        ///
+        /// Read as a string and only ever tested for presence: the instance writes it with a
+        /// numeric offset (`…+00:00`) where every other timestamp in the API ends in `Z`, and an
+        /// unparseable date would fail the whole profile over a checkmark.
+        public let verifiedAt: String?
+
+        public var isVerified: Bool { verifiedAt != nil }
+    }
+
+    public var bestDisplayName: String {
+        displayName.isEmpty ? "@\(acct)" : displayName
+    }
+
+    public var avatarURLString: String {
+        avatarStatic ?? avatar
+    }
+
+    /// The banner's address, or nil when the account has none.
+    ///
+    /// Mastodon answers "no banner" with a URL to a placeholder ending in `missing.png`, which is a
+    /// flat grey rectangle — drawing it would be a loading state that never finishes.
+    public var headerURLString: String? {
+        let header = headerStatic ?? header
+        guard !header.isEmpty, !header.hasSuffix("/missing.png") else { return nil }
+        return header
+    }
+
+    /// Whether the account lives on a different instance from the one being asked.
+    ///
+    /// Matters for the follower lists: an instance only lists the accounts it knows about, so for a
+    /// remote account they are a sample, while the counts are what the account's own server says.
+    public var isRemote: Bool { acct.contains("@") }
+}
+
 public struct MastodonMediaAttachment: Codable, Sendable {
 
     public let id: String
@@ -279,11 +369,14 @@ public struct MastodonNotification: Codable, Sendable {
 
 /// Response of `GET /api/v2/search`.
 ///
-/// Only the statuses are decoded. The endpoint answers with accounts and hashtags in the same
-/// object, and the one use here is resolving a post's URL to whatever id the *acting* instance
-/// files it under — which is the only way one account can act on a post another account fetched.
+/// Statuses and accounts are decoded; hashtags are not. Both uses are the same move: resolving a
+/// post's URL, or an account's address, to whatever id the *acting* instance files it under —
+/// which is the only way one account can act on something another account fetched.
 public struct MastodonSearchResults: Decodable, Sendable {
     public let statuses: [MastodonStatus]
+
+    /// Optional so a reply to a statuses-only search that leaves the key out still decodes.
+    public let accounts: [MastodonAccount]?
 }
 
 /// Response of `POST /api/v1/apps`.

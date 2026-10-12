@@ -35,8 +35,8 @@ public struct MastodonOAuth: Sendable {
     /// Enumerated one by one rather than asking for the blanket `read`/`write`, so the token can do
     /// exactly what the app has a feature for and nothing else.
     ///
-    /// The three `write:` scopes are what favouriting, boosting, replying and muting need, and they
-    /// are worth being plain about one at a time:
+    /// The first three `write:` scopes are what favouriting, boosting, replying and muting need, and
+    /// they are worth being plain about one at a time:
     ///
     /// - `write:favourites` is exactly favouriting, and nothing else.
     /// - **`write:statuses` covers boosting, and posting, and deleting.** There is no
@@ -56,6 +56,10 @@ public struct MastodonOAuth: Sendable {
     /// which reach an account through its notifications and nowhere else. The app lists mention
     /// notifications only, and never dismisses or clears any.
     ///
+    /// `read:follows` and `write:follows` are for the Follow button on a profile: the first to know
+    /// whether the reader already follows someone, the second to change it. **`write:follows` also
+    /// covers answering follow requests and removing followers**, which nothing in the app does.
+    ///
     /// Changing this string re-registers the app on the instance at the next sign-in, because
     /// `MastodonSignIn` only reuses a stored registration whose scopes match exactly. It does
     /// **not** upgrade a token already granted: an existing account keeps its read-only token
@@ -63,7 +67,7 @@ public struct MastodonOAuth: Sendable {
     /// ``MastodonError/writeNotAuthorized``, which the UI turns into a sentence saying so. A token
     /// granted before `read:notifications` likewise fails the mentions walk with
     /// ``MastodonError/notificationsNotAuthorized``, while the home timeline keeps loading.
-    public static let scopes = "read:statuses read:accounts read:lists read:bookmarks read:favourites read:search read:notifications write:favourites write:statuses write:mutes"
+    public static let scopes = "read:statuses read:accounts read:lists read:bookmarks read:favourites read:search read:notifications read:follows write:favourites write:statuses write:mutes write:follows"
 
     /// Where the instance sends the user back.
     ///

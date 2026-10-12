@@ -469,6 +469,27 @@ public actor RefreshEngine {
                 sideFailures.append(.retryable(error))
             }
 
+            // Last of the walks, and on the same terms as mentions: a conversation that could not be
+            // fetched this time costs the account nothing it already had.
+            for subscription in Self.replySubscriptions(of: accountID, in: container) {
+                do {
+                    let replies = try await planner.ingestReplies(
+                        to: MastodonStatusID(subscription.statusID),
+                        subscriptionID: subscription.id,
+                        budget: budget,
+                        historyWindowDays: historyWindowDays
+                    )
+                    outcome.itemsWritten += replies.itemsWritten
+                    outcome.pagesFetched += replies.pagesFetched
+                    outcome.lateArrivals += replies.lateArrivals
+                    outcome.isComplete = outcome.isComplete && replies.isComplete
+                    outcome.stoppedForBudget = outcome.stoppedForBudget || replies.stoppedForBudget
+                } catch {
+                    outcome.isComplete = false
+                    sideFailures.append(.retryable(error))
+                }
+            }
+
             // After the walk, which looks up the parents of the replies it writes, so this only
             // ever sees the ones it could not: replies stored before parents were looked up, and
             // lookups that failed. Housekeeping, so it can never fail the refresh it rides on.
@@ -479,6 +500,26 @@ public actor RefreshEngine {
             )
             return outcome
         }
+    }
+
+    /// What the replies walk needs to know about one subscription.
+    private struct SubscriptionToWalk: Sendable {
+        var id: UUID
+        var statusID: String
+    }
+
+    /// The account's subscriptions, oldest first, read off a context of their own so the values can
+    /// cross into the walk.
+    ///
+    /// One without a status id is skipped rather than asked about: it can only come from a device
+    /// that synced a half-made record, and asking an instance for the context of an empty id is a
+    /// request for a different endpoint altogether.
+    private static func replySubscriptions(of accountID: UUID, in container: ModelContainer) -> [SubscriptionToWalk] {
+        let context = ModelContext(container)
+        let subscriptions = (try? ReplySubscription.all(in: context)) ?? []
+        return subscriptions
+            .filter { $0.accountID == accountID && !$0.statusID.isEmpty }
+            .map { SubscriptionToWalk(id: $0.id, statusID: $0.statusID) }
     }
 
     /// Re-publishes the badge after something moved the count without items arriving.

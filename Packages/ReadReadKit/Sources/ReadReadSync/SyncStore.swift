@@ -207,6 +207,7 @@ public actor SyncStore {
         case .readLater: try applyReadLater(record)
         case .filter: try applyFilter(record)
         case .account: try applyAccount(record)
+        case .replySubscription: try applyReplySubscription(record)
         }
     }
 
@@ -340,6 +341,54 @@ public actor SyncStore {
         )
         rule.updatedAt = payload.updatedAt
         modelContext.insert(rule)
+        return true
+    }
+
+    private func applyReplySubscription(_ record: SyncRecord) throws -> Bool {
+        guard let id = UUID(uuidString: record.id) else {
+            throw SyncError.unexpectedResponse("Reply subscription id '\(record.id)' is not a UUID")
+        }
+        let existing = try ReplySubscription.find(id, in: modelContext)
+
+        if record.deleted {
+            guard let existing else { return false }
+            // Through the same path as removing it here, so the replies it brought in are let go
+            // of on this device too rather than staying in a list nothing can open any more.
+            try ReplySubscription.remove(existing, in: modelContext)
+            return true
+        }
+
+        let payload = try SyncPayloadCoding.decode(ReplySubscriptionPayload.self, from: record.payload)
+        guard let accountID = UUID(uuidString: payload.accountID) else {
+            throw SyncError.unexpectedResponse("Reply subscription account '\(payload.accountID)' is not a UUID")
+        }
+
+        if let existing {
+            // Last writer wins on the subscription's own `updatedAt`, as for a filter rule.
+            guard payload.updatedAt > existing.updatedAt else { return false }
+            if existing.statusID != payload.statusID || existing.accountID != accountID {
+                // Pointed at a different post, so what the old one brought in goes. Before the
+                // fields change, since the cursor is found by the account it was walked under.
+                try ReplySubscription.forgetConversation(of: existing, in: modelContext)
+            }
+            existing.accountID = accountID
+            existing.statusID = payload.statusID
+            existing.statusURLString = payload.statusURLString
+            existing.title = payload.title
+            existing.updatedAt = payload.updatedAt
+            return true
+        }
+
+        let subscription = ReplySubscription(
+            id: id,
+            accountID: accountID,
+            statusID: payload.statusID,
+            statusURLString: payload.statusURLString,
+            title: payload.title,
+            createdAt: payload.createdAt
+        )
+        subscription.updatedAt = payload.updatedAt
+        modelContext.insert(subscription)
         return true
     }
 

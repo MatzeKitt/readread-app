@@ -50,6 +50,10 @@ public struct RootView: View {
     /// See `StatusComposer`.
     @State private var composer = StatusComposer()
 
+    /// A Mastodon profile, opened from a post's author or from a row's context menu — both places
+    /// that can be gone before the profile is closed. See `ProfileViewerModel`.
+    @State private var profiles = ProfileViewerModel()
+
     /// The widths the two resizable columns open at, and where a drag is recorded. Read once, at
     /// the window's creation — see `ColumnWidths` for why it must not change while the window is
     /// open.
@@ -170,6 +174,9 @@ public struct RootView: View {
         .sheet(item: $composer.replyDraft) { draft in
             ReplyComposerSheet(draft: draft)
         }
+        .sheet(item: $composer.subscriptionDraft) { draft in
+            ReplySubscriptionSheet(draft: draft)
+        }
         // Confirmed, unlike Like and Boost, because this one cannot be taken back from inside the
         // app: the posts already fetched are deleted, and unmuting on the instance will not bring
         // them back — the ingest walk stops at the first id it already knows. See `AuthorMute`.
@@ -193,10 +200,12 @@ public struct RootView: View {
         .environment(mediaViewer)
         .environment(relativeClock)
         .environment(composer)
+        .environment(profiles)
         // Started here because the clock lives here. It runs for as long as the shell does, which
         // on the Mac is the whole session.
         .task { await relativeClock.run() }
         .mediaViewer(mediaViewer)
+        .profileViewer(profiles)
         .inAppBrowser(browser)
         // Installed once, here, rather than at each of the eight places that open a link.
         //

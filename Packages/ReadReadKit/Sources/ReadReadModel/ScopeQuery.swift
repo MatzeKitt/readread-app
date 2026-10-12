@@ -40,6 +40,11 @@ public enum ScopeQuery {
         case .folder(let name):
             return #Predicate<CachedItem> { $0.folderName == name && !$0.isFilteredOut && $0.isAccountEnabled }
 
+        case .replySubscription(let id):
+            return #Predicate<CachedItem> {
+                $0.replySubscriptionID == id && !$0.isFilteredOut && $0.isAccountEnabled
+            }
+
         case .lateArrivals:
             // Across every scope, because an item is flagged relative to whichever marker it
             // landed under and the user wants one place to find all of them.
@@ -88,6 +93,12 @@ public enum ScopeQuery {
             // rather than an `IN (…)` over every source id in the folder.
             return #Predicate<CachedItem> {
                 $0.folderName == name && $0.sortKeyRaw > mark && !$0.isFilteredOut && $0.isAccountEnabled
+            }
+
+        case .replySubscription(let id):
+            return #Predicate<CachedItem> {
+                $0.replySubscriptionID == id && $0.sortKeyRaw > mark
+                    && !$0.isFilteredOut && $0.isAccountEnabled
             }
 
         case .lateArrivals:
@@ -145,6 +156,12 @@ public enum ScopeQuery {
         case .folder(let name):
             return #Predicate<CachedItem> {
                 $0.folderName == name && $0.arrivedLate && !$0.isFilteredOut && $0.isAccountEnabled
+            }
+
+        case .replySubscription(let id):
+            return #Predicate<CachedItem> {
+                $0.replySubscriptionID == id && $0.arrivedLate
+                    && !$0.isFilteredOut && $0.isAccountEnabled
             }
 
         case .lateArrivals:
@@ -243,6 +260,17 @@ public enum ScopeQuery {
                 }
                 : #Predicate<CachedItem> {
                     $0.folderName == name && $0.sortKeyRaw < bound && !$0.isFilteredOut && $0.isAccountEnabled
+                }
+
+        case .replySubscription(let id):
+            return isNewer
+                ? #Predicate<CachedItem> {
+                    $0.replySubscriptionID == id && $0.sortKeyRaw > bound
+                        && !$0.isFilteredOut && $0.isAccountEnabled
+                }
+                : #Predicate<CachedItem> {
+                    $0.replySubscriptionID == id && $0.sortKeyRaw < bound
+                        && !$0.isFilteredOut && $0.isAccountEnabled
                 }
 
         case .lateArrivals:

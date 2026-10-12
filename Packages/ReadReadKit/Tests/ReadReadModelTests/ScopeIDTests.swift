@@ -15,6 +15,7 @@ struct ScopeIDTests {
         .folder("News"),
         .source("freshrss:E621E1F8-C36C-495A-93FC-0C247A3E6E5F:feed/12"),
         .mastodonHome(accountID: UUID(uuidString: "E621E1F8-C36C-495A-93FC-0C247A3E6E5F")!),
+        .replySubscription(UUID(uuidString: "0B2E6A43-6C1F-4F7C-9E59-3D2B5A1F7C10")!),
     ])
     func roundTripsThroughRawValue(scope: ScopeID) {
         #expect(ScopeID(rawValue: scope.rawValue) == scope)
@@ -40,6 +41,8 @@ struct ScopeIDTests {
         "source:",
         "mastodon-home:",
         "mastodon-home:not-a-uuid",
+        "reply-subscription:",
+        "reply-subscription:not-a-uuid",
         "Folder:News",
     ])
     func malformedValuesAreRejected(raw: String) {
@@ -55,6 +58,7 @@ struct ScopeIDTests {
             .folder("x"),
             .source("x"),
             .mastodonHome(accountID: UUID()),
+            .replySubscription(UUID()),
         ]
 
         #expect(Set(scopes.map(\.rawValue)).count == scopes.count)

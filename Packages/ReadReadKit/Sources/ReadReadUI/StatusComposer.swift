@@ -1,18 +1,19 @@
 import MastodonAPI
 import Observation
 import ReadReadModel
+import ReadReadSupport
 import ReadReadSync
 import SwiftUI
 
 /// What a Mastodon action needs to put on screen, held at the window.
 ///
-/// Both of the things here are started from a *row's* context menu, and a row is recycled the
-/// moment it scrolls off — taking any sheet or dialog presented from it along with it. So they are
-/// owned by the shell and presented there, exactly like ``MediaViewerModel`` and
-/// ``InAppBrowserModel``, and the menu's job is reduced to handing over what it was acting on.
+/// The things here are started from places that do not outlive them — a row's context menu, and a
+/// row is recycled the moment it scrolls off, taking any sheet or dialog presented from it along
+/// with it. So they are owned by the shell and presented there, exactly like ``MediaViewerModel``
+/// and ``InAppBrowserModel``, and the menu's job is reduced to handing over what it was acting on.
 ///
-/// One model for two unrelated presentations because they share that reason for existing and
-/// nothing else; splitting them would be two environment values and two modifiers that are always
+/// One model for unrelated presentations because they share that reason for existing and nothing
+/// else; splitting them would be several environment values and modifiers that are always
 /// installed together.
 @MainActor
 @Observable
@@ -64,8 +65,33 @@ final class StatusComposer {
         let authorHandle: String
     }
 
+    /// A reply subscription being made or changed.
+    ///
+    /// Here with the reply composer, for the same reason: it is started from places that do not
+    /// outlive it — a sidebar row's context menu, and the reading pane's toolbar, which changes
+    /// under it whenever the selection moves.
+    struct SubscriptionDraft: Identifiable {
+
+        let id = UUID()
+
+        /// The subscription being edited, or nil for a new one.
+        let editing: ReplySubscription?
+
+        /// The account to follow it with. Nil lets the sheet choose; a post from the timeline
+        /// fixes it to the account the post arrived in.
+        var accountID: UUID?
+
+        var urlString: String
+        var title: String
+
+        /// The post already looked up, when the draft starts from one. Saves the sheet a search
+        /// request for a post the store already holds by its id.
+        var target: ReplySubscriptionEditing.Target?
+    }
+
     var replyDraft: ReplyDraft?
     var muteRequest: MuteRequest?
+    var subscriptionDraft: SubscriptionDraft?
 
     /// Opens the composer, or answers false when the row cannot support one.
     ///
@@ -93,6 +119,63 @@ final class StatusComposer {
     }
 
     func dismissReply() { replyDraft = nil }
+
+    /// Opens the sheet for a new subscription, entered by link.
+    func newSubscription(accountID: UUID?) {
+        subscriptionDraft = SubscriptionDraft(editing: nil, accountID: accountID, urlString: "", title: "")
+    }
+
+    /// Opens the sheet for an existing subscription.
+    func edit(_ subscription: ReplySubscription) {
+        subscriptionDraft = SubscriptionDraft(
+            editing: subscription,
+            accountID: subscription.accountID,
+            urlString: subscription.statusURLString,
+            title: subscription.title,
+            target: ReplySubscriptionEditing.Target(
+                accountID: subscription.accountID,
+                statusID: subscription.statusID,
+                statusURLString: subscription.statusURLString
+            )
+        )
+    }
+
+    /// Opens the sheet for subscribing to a post in the timeline, or answers false when the row
+    /// cannot support one — see ``reply(to:)`` for why that is a `Bool`.
+    @discardableResult
+    func subscribe(to item: CachedItem) -> Bool {
+        guard let target = Self.subscriptionTarget(for: item), let status = Self.status(for: item) else {
+            return false
+        }
+        let post = status.displayStatus
+        subscriptionDraft = SubscriptionDraft(
+            editing: nil,
+            accountID: item.accountID,
+            urlString: target.statusURLString,
+            title: ReplySubscriptionEditing.suggestedTitle(
+                authorName: post.account.bestDisplayName,
+                text: item.isBehindContentWarning ? post.spoilerText : HTMLText.plainText(from: post.content)
+            ),
+            target: target
+        )
+        return true
+    }
+
+    func dismissSubscription() { subscriptionDraft = nil }
+
+    /// The post a row shows, as the account it arrived in knows it.
+    ///
+    /// The **displayed** status, as for every other action: a boost's own id names the act of
+    /// boosting, which has no replies.
+    static func subscriptionTarget(for item: CachedItem) -> ReplySubscriptionEditing.Target? {
+        guard let status = status(for: item) else { return nil }
+        let post = status.displayStatus
+        return ReplySubscriptionEditing.Target(
+            accountID: item.accountID,
+            statusID: post.id.rawValue,
+            statusURLString: post.url ?? post.uri
+        )
+    }
 
     func dismissMute() { muteRequest = nil }
 

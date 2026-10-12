@@ -56,6 +56,13 @@ public struct IngestedItem: Sendable, Equatable {
     /// and the sink leaves whatever the row already holds. See ``ReplyParentLookup``.
     public var replyParent: ReplyParentLookup?
 
+    /// The ``ReplySubscription`` this reply was fetched for, when it was.
+    ///
+    /// Nil means *not fetched for one*, not *in none*: the home walk sets nil for everything, and
+    /// the sink leaves the row's existing mark alone, so a subscribed reply seen again in the home
+    /// timeline stays in its subscription's list.
+    public var replySubscriptionID: UUID?
+
     /// The provider's own id for this item, in the form its cursor uses.
     ///
     /// Kept separate from `id` because `id` is namespaced for the local store while the cursor has
@@ -85,6 +92,7 @@ public struct IngestedItem: Sendable, Equatable {
         linkCard: LinkCard? = nil,
         engagement: StatusEngagement? = nil,
         replyParent: ReplyParentLookup? = nil,
+        replySubscriptionID: UUID? = nil,
         providerID: String
     ) {
         self.id = id
@@ -109,6 +117,7 @@ public struct IngestedItem: Sendable, Equatable {
         self.linkCard = linkCard
         self.engagement = engagement
         self.replyParent = replyParent
+        self.replySubscriptionID = replySubscriptionID
         self.providerID = providerID
     }
 }

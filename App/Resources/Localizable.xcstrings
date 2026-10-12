@@ -56,6 +56,17 @@
         }
       }
     },
+    "%@ is signed out. Sign in again to follow replies with it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ist abgemeldet. Erneut anmelden, um damit Antworten zu abonnieren."
+          }
+        }
+      }
+    },
     "%@ shortcut": {
       "extractionState": "manual",
       "localizations": {
@@ -100,6 +111,17 @@
         }
       }
     },
+    "%@'s server cannot find a post at that address.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server von %@ findet unter dieser Adresse keinen Beitrag."
+          }
+        }
+      }
+    },
     "%@'s server cannot find this post.": {
       "extractionState": "manual",
       "localizations": {
@@ -118,6 +140,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "Der Server von %@ hat das nicht angenommen. Möglicherweise ist es zu lang."
+          }
+        }
+      }
+    },
+    "%@: Its server cannot find this account": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: Der Server findet diesen Account nicht"
+          }
+        }
+      }
+    },
+    "%@: Loading…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: Wird geladen …"
+          }
+        }
+      }
+    },
+    "%@: Not available": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: Nicht verfügbar"
+          }
+        }
+      }
+    },
+    "%@: Reauthorise in Settings to follow": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: Zum Folgen in den Einstellungen neu autorisieren"
           }
         }
       }
@@ -251,6 +317,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eine Antwort kann nicht mehr Personen erreichen als der Beitrag, auf den sie antwortet."
+          }
+        }
+      }
+    },
+    "Account": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account"
           }
         }
       }
@@ -442,6 +519,17 @@
         }
       }
     },
+    "Approves followers": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestätigt Follower"
+          }
+        }
+      }
+    },
     "Arrived late": {
       "extractionState": "manual",
       "localizations": {
@@ -504,6 +592,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Autor"
+          }
+        }
+      }
+    },
+    "Back": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zurück"
           }
         }
       }
@@ -629,6 +728,17 @@
         }
       }
     },
+    "Bot": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bot"
+          }
+        }
+      }
+    },
     "Bounds what a refresh fetches — a new account pulls a week rather than every article its feeds have ever published. Items already downloaded stay until they are pruned, and widening this re-reads each feed once.": {
       "extractionState": "manual",
       "localizations": {
@@ -647,6 +757,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Abbrechen"
+          }
+        }
+      }
+    },
+    "Cancel Request": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anfrage zurückziehen"
+          }
+        }
+      }
+    },
+    "Cancel Request as %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anfrage zurückziehen als %@"
           }
         }
       }
@@ -838,6 +970,28 @@
         }
       }
     },
+    "Could not follow. The server may be unreachable.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folgen hat nicht funktioniert. Der Server ist möglicherweise nicht erreichbar."
+          }
+        }
+      }
+    },
+    "Could not reach %@'s server.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server von %@ ist nicht erreichbar."
+          }
+        }
+      }
+    },
     "Could not reach that instance. Check the address and your connection.": {
       "extractionState": "manual",
       "localizations": {
@@ -867,6 +1021,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Der Server ist nicht erreichbar. Adresse und Verbindung prüfen."
+          }
+        }
+      }
+    },
+    "Could not unfollow. The server may be unreachable.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfolgen hat nicht funktioniert. Der Server ist möglicherweise nicht erreichbar."
           }
         }
       }
@@ -955,6 +1120,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Regel bearbeiten"
+          }
+        }
+      }
+    },
+    "Edit Subscription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abo bearbeiten"
+          }
+        }
+      }
+    },
+    "Edit Subscription…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abo bearbeiten …"
           }
         }
       }
@@ -1146,6 +1333,39 @@
         }
       }
     },
+    "Follow": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folgen"
+          }
+        }
+      }
+    },
+    "Follow as %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folgen als %@"
+          }
+        }
+      }
+    },
+    "Followers": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Follower"
+          }
+        }
+      }
+    },
     "Followers only": {
       "extractionState": "manual",
       "localizations": {
@@ -1153,6 +1373,45 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nur Follower"
+          }
+        }
+      }
+    },
+    "Following": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folgt"
+          }
+        }
+      }
+    },
+    "Following (menu)": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gefolgt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Following"
+          }
+        }
+      }
+    },
+    "Follows you": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ist Follower"
           }
         }
       }
@@ -1400,6 +1659,17 @@
         }
       }
     },
+    "Joined %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dabei seit %@"
+          }
+        }
+      }
+    },
     "Keep an offline copy of saved articles": {
       "extractionState": "manual",
       "localizations": {
@@ -1473,6 +1743,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zeilenhöhe"
+          }
+        }
+      }
+    },
+    "Link to the post": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link zum Beitrag"
           }
         }
       }
@@ -1818,6 +2099,17 @@
         }
       }
     },
+    "No posts.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Beiträge."
+          }
+        }
+      }
+    },
     "No Rules": {
       "extractionState": "manual",
       "localizations": {
@@ -1891,6 +2183,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Noch kein Token gesichert."
+          }
+        }
+      }
+    },
+    "Nobody here yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch niemand hier."
           }
         }
       }
@@ -2093,6 +2396,17 @@
         }
       }
     },
+    "Only accounts known to your server are listed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufgeführt sind nur Accounts, die dem eigenen Server bekannt sind."
+          }
+        }
+      }
+    },
     "Only the saved summary is left: this item was put aside without an offline copy, and it is no longer in the cache.": {
       "extractionState": "manual",
       "localizations": {
@@ -2100,6 +2414,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Es ist nur die gespeicherte Zusammenfassung übrig: Dieser Eintrag wurde ohne Offline-Kopie zurückgelegt und liegt nicht mehr im Zwischenspeicher."
+          }
+        }
+      }
+    },
+    "Open Post": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beitrag öffnen"
           }
         }
       }
@@ -2247,6 +2572,17 @@
         }
       }
     },
+    "Pinned": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Angeheftet"
+          }
+        }
+      }
+    },
     "Plays this media": {
       "extractionState": "manual",
       "localizations": {
@@ -2276,6 +2612,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Positionsabgleich"
+          }
+        }
+      }
+    },
+    "Posts": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beiträge"
           }
         }
       }
@@ -2533,6 +2880,39 @@
         }
       }
     },
+    "Replies": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antworten"
+          }
+        }
+      }
+    },
+    "Replies can only be followed with a Mastodon account.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antworten lassen sich nur mit einem Mastodon-Account abonnieren."
+          }
+        }
+      }
+    },
+    "Replies to the post appear in the timeline and under this title in the sidebar.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antworten auf den Beitrag erscheinen in der Timeline und unter diesem Titel in der Seitenleiste."
+          }
+        }
+      }
+    },
     "Reply": {
       "extractionState": "manual",
       "localizations": {
@@ -2551,6 +2931,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Antworten als"
+          }
+        }
+      }
+    },
+    "Reply in %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antwort in „%@“"
+          }
+        }
+      }
+    },
+    "Reply in a followed conversation": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antwort in einer abonnierten Unterhaltung"
           }
         }
       }
@@ -2841,6 +3243,17 @@
         }
       }
     },
+    "Show Profile": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profil anzeigen"
+          }
+        }
+      }
+    },
     "Show this image full size": {
       "extractionState": "manual",
       "localizations": {
@@ -2859,6 +3272,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zeigt das Bild in voller Größe"
+          }
+        }
+      }
+    },
+    "Shows the profile": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeigt das Profil"
           }
         }
       }
@@ -2962,6 +3386,39 @@
         }
       }
     },
+    "Subscribe": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abonnieren"
+          }
+        }
+      }
+    },
+    "Subscribe to Replies": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antworten abonnieren"
+          }
+        }
+      }
+    },
+    "Subscribe to Replies…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antworten abonnieren …"
+          }
+        }
+      }
+    },
     "Sync reading position": {
       "extractionState": "manual",
       "localizations": {
@@ -3002,6 +3459,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zu suchender Text"
+          }
+        }
+      }
+    },
+    "That account is no longer set up.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Account ist nicht mehr eingerichtet."
           }
         }
       }
@@ -3068,6 +3536,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Das sieht nicht nach einer Instanzadresse aus."
+          }
+        }
+      }
+    },
+    "That is not a link to a post.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das ist kein Link zu einem Beitrag."
           }
         }
       }
@@ -3156,6 +3635,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Der Account, aus dem dieser Beitrag stammt, ist nicht mehr eingerichtet."
+          }
+        }
+      }
+    },
+    "The account this profile was opened from is no longer set up.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Account, über den dieses Profil geöffnet wurde, ist nicht mehr eingerichtet."
           }
         }
       }
@@ -3270,6 +3760,17 @@
         }
       }
     },
+    "The Mastodon account needs to be signed in again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Mastodon-Account muss erneut angemeldet werden."
+          }
+        }
+      }
+    },
     "The page could not be loaded.": {
       "extractionState": "manual",
       "localizations": {
@@ -3288,6 +3789,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Das Passwort konnte nicht im Schlüsselbund gesichert werden."
+          }
+        }
+      }
+    },
+    "The replies are fetched from this account's server.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Antworten werden vom Server dieses Accounts geladen."
           }
         }
       }
@@ -3369,6 +3881,17 @@
         }
       }
     },
+    "The subscription could not be saved.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Abo konnte nicht gesichert werden."
+          }
+        }
+      }
+    },
     "The times above are the app's own cadences, which run while a window is visible; a failing server is retried at a widening interval rather than every cycle. Behind a hidden window macOS itself schedules the refreshing, at a moment of its choosing near the shortest cadence above — that is what the count below reports. Nothing can wake ReadRead once it has quit: macOS has no equivalent of the background launch iOS gives a closed app.": {
       "extractionState": "manual",
       "localizations": {
@@ -3398,6 +3921,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Neue Beiträge kommen nicht mehr an, bereits geladene werden entfernt. Die Stummschaltung lässt sich nur auf dem Mastodon-Server aufheben."
+          }
+        }
+      }
+    },
+    "This account approves its followers, so following it again needs a new request.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Account bestätigt Follower selbst – erneutes Folgen erfordert daher eine neue Anfrage."
+          }
+        }
+      }
+    },
+    "This account keeps this list private.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Account hält diese Liste privat."
+          }
+        }
+      }
+    },
+    "This could not be loaded.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das konnte nicht geladen werden."
           }
         }
       }
@@ -3556,6 +4112,39 @@
         }
       }
     },
+    "Unfollow": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfolgen"
+          }
+        }
+      }
+    },
+    "Unfollow @%@?": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "@%@ entfolgen?"
+          }
+        }
+      }
+    },
+    "Unfollow as %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfolgen als %@"
+          }
+        }
+      }
+    },
     "Unknown": {
       "extractionState": "manual",
       "localizations": {
@@ -3578,6 +4167,28 @@
         }
       }
     },
+    "Unsubscribe": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abo beenden"
+          }
+        }
+      }
+    },
+    "Unsubscribe from Replies": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antworten nicht mehr abonnieren"
+          }
+        }
+      }
+    },
     "Up to date": {
       "extractionState": "manual",
       "localizations": {
@@ -3596,6 +4207,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Benutzername"
+          }
+        }
+      }
+    },
+    "Verified link": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifizierter Link"
           }
         }
       }

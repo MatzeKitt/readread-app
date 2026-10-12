@@ -32,9 +32,10 @@ struct MastodonOAuthTests {
     /// and it is replaced with a tighter one rather than a weaker one: the set is pinned exactly, so
     /// widening the grant by so much as one scope fails here and has to be argued for.
     ///
-    /// The three still ruled out are the ones that would let the app act on the reader's *identity*
-    /// rather than on a post: following, blocking and reporting (`write:follows`, `write:blocks`,
-    /// `write:reports`), the blanket `write`, and push. Note what this cannot rule out:
+    /// Still ruled out are blocking and reporting (`write:blocks`, `write:reports`), the blanket
+    /// `write`, and push. Following (`read:follows`, `write:follows`) was ruled out with them until
+    /// profiles got a Follow button; `write:follows` also permits answering follow requests and
+    /// removing followers, which nothing in the app does. Note what this cannot rule out:
     /// `write:statuses` is the only scope Mastodon offers for boosting and it also permits posting,
     /// so the grant is wider than the feature. That is a property of the API, and it is documented
     /// at ``MastodonOAuth/scopes``, as is the same problem with `write:mutes`, which is the only
@@ -51,9 +52,11 @@ struct MastodonOAuthTests {
             "read:favourites",
             "read:search",
             "read:notifications",
+            "read:follows",
             "write:favourites",
             "write:statuses",
             "write:mutes",
+            "write:follows",
         ])
 
         // Spelled out separately from the equality above, because these are the ones whose absence
@@ -61,10 +64,11 @@ struct MastodonOAuthTests {
         // promise breaking rather than as a list needing an update.
         #expect(!scopes.contains("write"))
         #expect(!scopes.contains("read"))
-        #expect(!scopes.contains { $0.hasPrefix("write:follow") })
         #expect(!scopes.contains { $0.hasPrefix("write:block") })
         #expect(!scopes.contains { $0.hasPrefix("write:report") })
-        #expect(!MastodonOAuth.scopes.contains("follow"))
+        // The legacy blanket scope, which predates `read:follows` and `write:follows` and grants
+        // blocking and muting as well.
+        #expect(!scopes.contains("follow"))
         #expect(!MastodonOAuth.scopes.contains("push"))
     }
 
