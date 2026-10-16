@@ -221,6 +221,11 @@ public actor RefreshEngine {
         if outcome.changedCollections.contains(.account) {
             let context = ModelContext(container)
             _ = try? ThresholdService.reconcileAccountVisibility(in: context)
+            // An account removed elsewhere takes its items with it, and where one of them was the
+            // copy All Items showed, another account's copy of the post has to take its place.
+            if (try? DuplicateElection.reelectAll(in: context)) ?? 0 > 0 {
+                try? context.save()
+            }
         }
 
         // Last, so the count is taken from rows the two passes above have already corrected —

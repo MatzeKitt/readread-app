@@ -300,6 +300,10 @@ public struct RootView: View {
             _ = try? await backfill.fillMissingBoostAttribution()
             _ = try? await backfill.fillMissingLinkCards()
             _ = try? await backfill.fillMissingInteractionState()
+            // Last, after `AccountDeduplication` and the visibility pass above have settled which
+            // rows exist and which are shown: it re-elects which account's copy of each post All
+            // Items lists.
+            _ = try? await backfill.fillMissingDuplicateKeys()
 
             // Not awaited, unlike the backfills above: it strips the body of every article already
             // stored, which is seconds of work that must not hold up the window. Started after the

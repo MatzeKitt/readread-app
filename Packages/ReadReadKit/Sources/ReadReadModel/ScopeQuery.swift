@@ -14,6 +14,13 @@ import SwiftData
 /// Two exclusions are shared by every predicate here — an item hidden by a filter rule, and an item
 /// belonging to a switched-off account. Adding either to the list but not to the counts is the
 /// mistake this type exists to make impossible.
+///
+/// A third, `isDuplicate`, applies only where accounts are merged: All Items, Older Items and
+/// Filtered Items. It drops another account's copy of a post already listed — see
+/// ``DuplicateElection``. Everything else is one account's by construction, and leaves it out
+/// deliberately: a home timeline must show its own copy of a post even when All Items shows a
+/// different account's. Folders are left out too, because they are FreshRSS categories and an
+/// article never has a copy to drop.
 public enum ScopeQuery {
 
     /// Items the timeline shows for a scope.
@@ -29,7 +36,7 @@ public enum ScopeQuery {
     public static func displayPredicate(for scope: ScopeID) -> Predicate<CachedItem> {
         switch scope {
         case .all:
-            return #Predicate<CachedItem> { !$0.isFilteredOut && $0.isAccountEnabled }
+            return #Predicate<CachedItem> { !$0.isFilteredOut && $0.isAccountEnabled && !$0.isDuplicate }
 
         case .source(let sourceID):
             return #Predicate<CachedItem> { $0.sourceID == sourceID && !$0.isFilteredOut && $0.isAccountEnabled }
@@ -48,7 +55,9 @@ public enum ScopeQuery {
         case .lateArrivals:
             // Across every scope, because an item is flagged relative to whichever marker it
             // landed under and the user wants one place to find all of them.
-            return #Predicate<CachedItem> { $0.arrivedLate && !$0.isFilteredOut && $0.isAccountEnabled }
+            return #Predicate<CachedItem> {
+                $0.arrivedLate && !$0.isFilteredOut && $0.isAccountEnabled && !$0.isDuplicate
+            }
 
         case .filtered:
             // The inverse of every other scope's `!$0.isFilteredOut`, which is the entire point of
@@ -59,7 +68,7 @@ public enum ScopeQuery {
             // `isAccountEnabled` still applies. An account switched off has all of its items
             // withheld everywhere, and showing them here would make disabling an account look like
             // it had filtered its items instead.
-            return #Predicate<CachedItem> { $0.isFilteredOut && $0.isAccountEnabled }
+            return #Predicate<CachedItem> { $0.isFilteredOut && $0.isAccountEnabled && !$0.isDuplicate }
 
         case .readLater:
             // Routed to the Read Later list before reaching here; there is no `CachedItem` form.
@@ -74,7 +83,9 @@ public enum ScopeQuery {
     public static func newerPredicate(for scope: ScopeID, than mark: String) -> Predicate<CachedItem>? {
         switch scope {
         case .all:
-            return #Predicate<CachedItem> { $0.sortKeyRaw > mark && !$0.isFilteredOut && $0.isAccountEnabled }
+            return #Predicate<CachedItem> {
+                $0.sortKeyRaw > mark && !$0.isFilteredOut && $0.isAccountEnabled && !$0.isDuplicate
+            }
 
         case .source(let sourceID):
             return #Predicate<CachedItem> {
@@ -117,6 +128,7 @@ public enum ScopeQuery {
             // clear Older Items, or fail to.
             return #Predicate<CachedItem> {
                 $0.arrivedLate && $0.sortKeyRaw > mark && !$0.isFilteredOut && $0.isAccountEnabled
+                    && !$0.isDuplicate
             }
 
         case .filtered:
@@ -127,7 +139,7 @@ public enum ScopeQuery {
             // question anybody asks. What the badge answers, when it is switched on at all, is how
             // much the rules are currently hiding. `newerCount(for: .filtered)` therefore returns
             // the size of the list, which is what the sidebar shows beside it.
-            return #Predicate<CachedItem> { $0.isFilteredOut && $0.isAccountEnabled }
+            return #Predicate<CachedItem> { $0.isFilteredOut && $0.isAccountEnabled && !$0.isDuplicate }
 
         case .readLater:
             return nil
@@ -141,7 +153,9 @@ public enum ScopeQuery {
     public static func lateArrivalPredicate(for scope: ScopeID) -> Predicate<CachedItem>? {
         switch scope {
         case .all:
-            return #Predicate<CachedItem> { $0.arrivedLate && !$0.isFilteredOut && $0.isAccountEnabled }
+            return #Predicate<CachedItem> {
+                $0.arrivedLate && !$0.isFilteredOut && $0.isAccountEnabled && !$0.isDuplicate
+            }
 
         case .source(let sourceID):
             return #Predicate<CachedItem> {
@@ -165,7 +179,9 @@ public enum ScopeQuery {
             }
 
         case .lateArrivals:
-            return #Predicate<CachedItem> { $0.arrivedLate && !$0.isFilteredOut && $0.isAccountEnabled }
+            return #Predicate<CachedItem> {
+                $0.arrivedLate && !$0.isFilteredOut && $0.isAccountEnabled && !$0.isDuplicate
+            }
 
         case .filtered:
             // A hidden item is not offered as a late arrival: it is not in the timeline to have
@@ -234,8 +250,12 @@ public enum ScopeQuery {
         switch scope {
         case .all:
             return isNewer
-                ? #Predicate<CachedItem> { $0.sortKeyRaw > bound && !$0.isFilteredOut && $0.isAccountEnabled }
-                : #Predicate<CachedItem> { $0.sortKeyRaw < bound && !$0.isFilteredOut && $0.isAccountEnabled }
+                ? #Predicate<CachedItem> {
+                    $0.sortKeyRaw > bound && !$0.isFilteredOut && $0.isAccountEnabled && !$0.isDuplicate
+                }
+                : #Predicate<CachedItem> {
+                    $0.sortKeyRaw < bound && !$0.isFilteredOut && $0.isAccountEnabled && !$0.isDuplicate
+                }
 
         case .source(let sourceID):
             return isNewer
@@ -277,9 +297,11 @@ public enum ScopeQuery {
             return isNewer
                 ? #Predicate<CachedItem> {
                     $0.arrivedLate && $0.sortKeyRaw > bound && !$0.isFilteredOut && $0.isAccountEnabled
+                        && !$0.isDuplicate
                 }
                 : #Predicate<CachedItem> {
                     $0.arrivedLate && $0.sortKeyRaw < bound && !$0.isFilteredOut && $0.isAccountEnabled
+                        && !$0.isDuplicate
                 }
 
         case .filtered:
@@ -287,10 +309,10 @@ public enum ScopeQuery {
             // walk the filtered list, instead of walking out of it into the timeline.
             return isNewer
                 ? #Predicate<CachedItem> {
-                    $0.isFilteredOut && $0.sortKeyRaw > bound && $0.isAccountEnabled
+                    $0.isFilteredOut && $0.sortKeyRaw > bound && $0.isAccountEnabled && !$0.isDuplicate
                 }
                 : #Predicate<CachedItem> {
-                    $0.isFilteredOut && $0.sortKeyRaw < bound && $0.isAccountEnabled
+                    $0.isFilteredOut && $0.sortKeyRaw < bound && $0.isAccountEnabled && !$0.isDuplicate
                 }
 
         case .readLater:

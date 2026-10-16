@@ -61,9 +61,13 @@ public enum AuthorMute {
         )
 
         let doomed = try context.fetch(descriptor)
+        let keys = doomed.compactMap(\.duplicateKey)
         for item in doomed {
             context.delete(item)
         }
+        // The mute is this account's. Another account's copy of the same posts stays, and has to
+        // take over All Items from the copies just removed.
+        try DuplicateElection.reelect(keys: keys, in: context)
         return doomed.count
     }
 

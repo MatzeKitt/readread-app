@@ -301,4 +301,59 @@ public actor StatusBackfill {
 
         return updated
     }
+
+    /// Fills in `duplicateKey` for statuses that predate it, then re-elects every post's copy.
+    ///
+    /// Without the fill, a post fetched by two accounts before the update would keep appearing
+    /// twice in All Items until both copies were pruned. The payload is enough: it is the status
+    /// re-encoded, and `uri` was part of it from the start.
+    ///
+    /// The election runs every time, not only after a fill, and that is deliberate. The flags it
+    /// writes are kept right by every change that can move them, but a change made by a build
+    /// before this one, or one that slipped past, would otherwise hide a post from All Items for
+    /// good. One pass at launch is what makes such a slip heal.
+    ///
+    /// - Returns: How many rows were given a key.
+    @discardableResult
+    public func fillMissingDuplicateKeys() throws -> Int {
+        let statusKind = ItemKind.status.rawValue
+        var descriptor = FetchDescriptor<CachedItem>(
+            predicate: #Predicate {
+                $0.kindRaw == statusKind && $0.duplicateKey == nil && $0.mastodonPayload != nil
+            }
+        )
+        descriptor.fetchLimit = Self.batchSize
+
+        var updated = 0
+
+        while true {
+            let rows = try modelContext.fetch(descriptor)
+            guard !rows.isEmpty else { break }
+
+            var changed = 0
+            for row in rows {
+                guard
+                    let payload = row.mastodonPayload,
+                    let status = try? JSONDecoder.mastodon.decode(MastodonStatus.self, from: payload)
+                else {
+                    // Undecodable, and it has to leave the predicate or this loop never ends. Empty
+                    // is no identity, so the row is never taken for anything else's copy.
+                    row.duplicateKey = ""
+                    continue
+                }
+                row.duplicateKey = status.displayStatus.uri
+                changed += 1
+            }
+
+            try modelContext.save()
+            updated += changed
+
+            if rows.count < Self.batchSize { break }
+        }
+
+        if try DuplicateElection.reelectAll(in: modelContext) > 0 {
+            try modelContext.save()
+        }
+        return updated
+    }
 }

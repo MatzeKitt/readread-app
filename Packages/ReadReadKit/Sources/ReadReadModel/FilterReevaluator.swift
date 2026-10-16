@@ -111,6 +111,13 @@ public actor FilterReevaluator {
             offset += batch.count
         }
 
+        // Once the whole store has its new answers, since a copy now hidden may be the one All
+        // Items was showing, and another account's copy has to take its place.
+        if outcome.changed > 0 {
+            try DuplicateElection.reelectAll(in: modelContext)
+            try modelContext.save()
+        }
+
         return outcome
     }
 

@@ -31,7 +31,8 @@ public final class CachedItem {
         [\.sortKeyRaw],
         [\.sourceID, \.sortKeyRaw],
         [\.folderName, \.sortKeyRaw],
-        [\.ingestKeyRaw]
+        [\.ingestKeyRaw],
+        [\.duplicateKey]
     )
 
     public var id: String = ""
@@ -157,6 +158,28 @@ public final class CachedItem {
     /// Whether a `FilterRule` currently hides this item. Stored rather than evaluated on read so
     /// timeline queries and every threshold count can exclude filtered items in the predicate.
     public var isFilteredOut: Bool = false
+
+    /// What makes two rows the same post, whichever account fetched them: a status's ActivityPub
+    /// `uri`, which every instance reports identically for its copy.
+    ///
+    /// The row ids cannot answer that. They are namespaced by account, and even the status id
+    /// inside them differs between instances, so following one person from two accounts stores
+    /// their posts twice — which is right for each account's own timeline and wrong for every list
+    /// that merges accounts. See ``DuplicateElection``.
+    ///
+    /// Nil on a status means *not derived* — a row written before the column existed — and
+    /// `StatusBackfill` fills those in from the stored payload; an empty string is its answer for a
+    /// payload that will not decode. Nil on an article is permanent: the same story under two
+    /// FreshRSS accounts has no shared id to tell it by, so articles are never merged.
+    public var duplicateKey: String?
+
+    /// Whether another account's copy of the same post is the one the merged lists show.
+    ///
+    /// Stored for the reason ``isFilteredOut`` is: the lists and every count exclude it inside
+    /// their predicate. Owned by ``DuplicateElection`` alone, which rewrites it whenever the set of
+    /// copies or their visibility changes. Only the scopes that merge accounts read it — an
+    /// account's own home timeline shows its copy regardless.
+    public var isDuplicate: Bool = false
 
     public var attachments: [Attachment] = []
 
@@ -313,6 +336,7 @@ public final class CachedItem {
         linkCard: LinkCard? = nil,
         inReplyToStatusID: String? = nil,
         replySubscriptionID: UUID? = nil,
+        duplicateKey: String? = nil,
         attachments: [Attachment] = [],
         mastodonPayload: Data? = nil,
         fullPageHTML: String? = nil,
@@ -352,6 +376,7 @@ public final class CachedItem {
         }
         self.inReplyToStatusID = inReplyToStatusID
         self.replySubscriptionID = replySubscriptionID
+        self.duplicateKey = duplicateKey
         self.attachments = attachments
         self.mastodonPayload = mastodonPayload
         self.fullPageHTML = fullPageHTML

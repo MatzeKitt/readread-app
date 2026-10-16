@@ -189,6 +189,12 @@ struct AccountSettingsTab: View {
         modelContext.delete(account)
         try? modelContext.save()
 
+        // After the save, so the removed account's rows are gone from the fetch: where one of them
+        // was the copy All Items showed, another account's copy of that post takes its place.
+        if (try? DuplicateElection.reelectAll(in: modelContext)) ?? 0 > 0 {
+            try? modelContext.save()
+        }
+
         pendingRemoval = nil
         Task { await services.accountsChanged() }
     }

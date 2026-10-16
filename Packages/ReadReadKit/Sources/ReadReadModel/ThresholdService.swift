@@ -500,6 +500,11 @@ public enum ThresholdService {
             item.isAccountEnabled = isEnabled
             changed += 1
         }
+        // A switched-off account's copy must hand All Items over to another account's, and take it
+        // back when switched on again, or the post leaves All Items with the account that had it.
+        if changed > 0 {
+            try DuplicateElection.reelect(keys: items.compactMap(\.duplicateKey), in: context)
+        }
         return changed
     }
 

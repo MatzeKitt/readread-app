@@ -504,6 +504,10 @@ public struct MastodonIngestPlanner: Sendable {
             ),
             replyParent: replyParent,
             replySubscriptionID: replySubscriptionID,
+            // The displayed post's ActivityPub id, the one name every instance gives it alike, so
+            // another account's copy is recognised as the same post. From the displayed status: a
+            // boost is someone sharing the post, and the reader following both sees one post twice.
+            duplicateKey: display.uri,
             providerID: status.id.rawValue
         )
     }

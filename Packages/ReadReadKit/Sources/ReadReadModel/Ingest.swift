@@ -63,6 +63,9 @@ public struct IngestedItem: Sendable, Equatable {
     /// timeline stays in its subscription's list.
     public var replySubscriptionID: UUID?
 
+    /// What makes this the same post as another account's copy. See ``CachedItem/duplicateKey``.
+    public var duplicateKey: String?
+
     /// The provider's own id for this item, in the form its cursor uses.
     ///
     /// Kept separate from `id` because `id` is namespaced for the local store while the cursor has
@@ -93,6 +96,7 @@ public struct IngestedItem: Sendable, Equatable {
         engagement: StatusEngagement? = nil,
         replyParent: ReplyParentLookup? = nil,
         replySubscriptionID: UUID? = nil,
+        duplicateKey: String? = nil,
         providerID: String
     ) {
         self.id = id
@@ -118,6 +122,7 @@ public struct IngestedItem: Sendable, Equatable {
         self.engagement = engagement
         self.replyParent = replyParent
         self.replySubscriptionID = replySubscriptionID
+        self.duplicateKey = duplicateKey
         self.providerID = providerID
     }
 }

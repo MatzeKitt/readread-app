@@ -96,6 +96,34 @@ struct StatusBackfillTests {
         return try context.fetch(descriptor).first
     }
 
+    /// Two accounts' copies stored before the key existed, one of them a boost: both are named by
+    /// the original's `uri`, and the pass then lists the post once.
+    @Test("Posts already in the store gain their key and are listed once")
+    func duplicateKeysAreBackfilled() async throws {
+        let other = row(id: "b", payload: payload(boostedBy: "Marie Curie"))
+        other.accountID = UUID(uuidString: "CCCCCCCC-0000-0000-0000-000000000002")!
+        let (backfill, container) = try make([row(id: "a", payload: payload(boostedBy: nil)), other])
+
+        let updated = try await backfill.fillMissingDuplicateKeys()
+
+        #expect(updated == 2)
+        #expect(try stored("a", in: container)?.duplicateKey == "https://other.example/users/orig/statuses/2001")
+        #expect(try stored("b", in: container)?.duplicateKey == "https://other.example/users/orig/statuses/2001")
+        let listed = try ModelContext(container).fetchCount(
+            FetchDescriptor<CachedItem>(predicate: ScopeQuery.displayPredicate(for: .all))
+        )
+        #expect(listed == 1)
+        #expect(try await backfill.fillMissingDuplicateKeys() == 0)
+    }
+
+    @Test("An undecodable payload is answered with no key")
+    func undecodableHasNoKey() async throws {
+        let (backfill, container) = try make([row(id: "a", payload: Data("{".utf8))])
+
+        #expect(try await backfill.fillMissingDuplicateKeys() == 0)
+        #expect(try stored("a", in: container)?.duplicateKey == "")
+    }
+
     /// The point of the whole pass: a post already in the store is never fetched again, so without
     /// this the booster's name would appear only on posts that arrive after the update.
     @Test("A boost already in the store gains its attribution")

@@ -164,6 +164,11 @@ public actor SwiftDataIngestSink: IngestSink {
 
                 upsert(item, arrivedLate: arrivedLate)
             }
+
+            // In the same save as the rows, so a post another account already has never reaches
+            // All Items as a second copy, not even until the next pass. Also when an existing row
+            // was only updated: its filter answer may have changed, and with it which copy wins.
+            try DuplicateElection.reelect(keys: items.compactMap(\.duplicateKey), in: modelContext)
         }
 
         cursor.resumeContinuation = resumeContinuation
@@ -215,6 +220,9 @@ public actor SwiftDataIngestSink: IngestSink {
             existing.isSensitive = item.isSensitive ?? existing.isSensitive
             existing.mastodonPayload = item.mastodonPayload ?? existing.mastodonPayload
             existing.isFilteredOut = hidden
+            // Kept when the planner did not say, like the payload: nil is "did not derive one", and
+            // blanking a known key would put the post back into All Items a second time.
+            existing.duplicateKey = item.duplicateKey ?? existing.duplicateKey
             // Refreshed on every re-ingest, unlike `arrivedLate`: these are a live property of the
             // post on the server, and a boost count frozen at first sight would be worse than not
             // showing one at all.
@@ -288,6 +296,7 @@ public actor SwiftDataIngestSink: IngestSink {
             linkCard: item.linkCard,
             inReplyToStatusID: item.engagement?.inReplyToStatusID,
             replySubscriptionID: item.replySubscriptionID,
+            duplicateKey: item.duplicateKey,
             attachments: item.attachments,
             mastodonPayload: item.mastodonPayload
         )

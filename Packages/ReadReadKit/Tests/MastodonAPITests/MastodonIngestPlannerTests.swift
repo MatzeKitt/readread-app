@@ -315,6 +315,8 @@ struct MastodonIngestPlannerTests {
         #expect(item.authorName == "Original Author")
         #expect(item.urlString == "https://other.example/@orig/1")
         #expect(item.iconURLString == "https://files.example/o.png")
+        // Named as the original too, so it is recognised as the post another account has as well.
+        #expect(item.duplicateKey == "https://other.example/users/orig/statuses/1")
         // And so are the counts. A boost wrapper's own counts are always zero, so reading them
         // from the outer status would report every boosted post as having reached nobody.
         #expect(item.engagement == StatusEngagement(

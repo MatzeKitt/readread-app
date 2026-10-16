@@ -170,6 +170,11 @@ public actor RetentionService {
 
         if report.itemsDeleted > 0 {
             try modelContext.save()
+            // After the save, so the deleted rows are gone from the fetch. A pruned copy may be the
+            // one All Items showed; another account's copy, kept for longer, takes its place.
+            if try DuplicateElection.reelectAll(in: modelContext) > 0 {
+                try modelContext.save()
+            }
         }
         return report
     }
