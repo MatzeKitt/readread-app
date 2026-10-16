@@ -1,4 +1,5 @@
 import ReadReadModel
+import ReadReadSupport
 import SwiftData
 import SwiftUI
 import WebKit
@@ -510,6 +511,11 @@ enum ReaderDocument {
         let comments = hasComments
             ? "<section id=\"\(ReaderComments.sectionID)\" hidden></section>"
             : ""
+        // The feed's markup is rendered as published, so a doubled image URL from a broken feed
+        // reaches the web view as is unless it is repaired here. Here rather than at ingest, so
+        // items already cached and Read Later archives are fixed without a refetch. An extracted
+        // `body` has been through `HTMLSanitizer`, which does the same repair.
+        let content = body ?? DoubledURL.repairing(subject.contentHTML)
 
         return """
         <!doctype html>
@@ -525,7 +531,7 @@ enum ReaderDocument {
         \(heading)
         <p class="byline">\(escaped(byline))</p>
         \(banner)
-        \(body ?? subject.contentHTML)
+        \(content)
         </article>
         \(comments)
         <script>\(script)</script>

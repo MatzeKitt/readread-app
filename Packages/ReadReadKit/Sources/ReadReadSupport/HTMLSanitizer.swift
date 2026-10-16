@@ -152,7 +152,8 @@ public enum HTMLSanitizer {
 
     /// Resolves a URL against the page and checks its scheme.
     private static func resolving(_ value: String, baseURL: URL?, allowing schemes: Set<String>) -> String? {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Repaired before the checks below, so they judge the URL that will actually be loaded.
+        let trimmed = DoubledURL.repairing(value.trimmingCharacters(in: .whitespacesAndNewlines))
         guard !trimmed.isEmpty else { return nil }
 
         // Checked on the raw string as well as the parsed URL: `URL` is lenient about leading
