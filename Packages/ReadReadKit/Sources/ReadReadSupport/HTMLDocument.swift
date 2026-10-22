@@ -83,6 +83,20 @@ public final class HTMLElement {
         self.parent = nil
     }
 
+    /// Puts another element where this one is, detaching this one.
+    public func replace(with replacement: HTMLElement) {
+        guard let parent,
+              let index = parent.children.firstIndex(where: { node in
+                  if case .element(let element) = node { return element === self }
+                  return false
+              })
+        else { return }
+        replacement.removeFromParent()
+        parent.children[index] = .element(replacement)
+        replacement.parent = parent
+        self.parent = nil
+    }
+
     /// The element's siblings, itself excluded.
     public var siblings: [HTMLElement] {
         (parent?.childElements ?? []).filter { $0 !== self }

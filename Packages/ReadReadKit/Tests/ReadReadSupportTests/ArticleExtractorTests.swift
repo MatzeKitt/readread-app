@@ -166,6 +166,50 @@ struct ArticleExtractorTests {
         #expect(result.html.contains("https://example.com/images/real.jpg"))
     }
 
+    @Test("A placeholder image is replaced by the copy in the noscript after it")
+    func restoresNoscriptImages() throws {
+        // heise's markup, reduced: the visible image is a grey `data:` SVG waiting for a script,
+        // and the real one is only in `<noscript>`.
+        let body = longBody + """
+        <figure><div><a href="/imgs/thermostat.jpg">
+        <a-img alt="A thermostat" src="/imgs/thermostat.jpg" width="1125" height="2020">
+          <img alt="A thermostat" src="data:image/svg+xml,%3Csvg xmlns=&#39;http://www.w3.org/2000/svg&#39;%3E%3C/svg%3E" width="1125" height="2020">
+        </a-img>
+        <noscript>
+          <img alt="A thermostat" class="legacy-img" loading="lazy" onload="this.style=null;"
+            src="https://cdn.example/imgs/thermostat.jpg?width=696"
+            srcset="https://cdn.example/imgs/thermostat.jpg?width=336 336w, https://cdn.example/imgs/thermostat.jpg?width=1008 1008w"
+            width="696" height="1249">
+        </noscript>
+        </a></div><figcaption>The thermostat</figcaption></figure>
+        """
+        let result = try #require(ArticleExtractor.extract(from: page(articleBody: body), baseURL: base))
+
+        #expect(result.html.contains("src=\"https://cdn.example/imgs/thermostat.jpg?width=696\""))
+        #expect(result.html.contains("https://cdn.example/imgs/thermostat.jpg?width=1008 1008w"))
+        // Once, not twice: the placeholder is replaced, not joined.
+        #expect(result.html.components(separatedBy: "<img").count - 1 == 1)
+        #expect(!result.html.contains("onload"))
+    }
+
+    @Test("A placeholder with no source to fall back on is dropped rather than left as a box")
+    func dropsUnresolvablePlaceholders() throws {
+        let body = longBody + "<p><img src=\"data:image/gif;base64,R0lGOD\" alt=\"Nothing\" width=\"640\"></p>"
+        let result = try #require(ArticleExtractor.extract(from: page(articleBody: body), baseURL: base))
+        #expect(!result.html.contains("<img"))
+    }
+
+    @Test("A noscript image with no placeholder before it is not added")
+    func ignoresLoneNoscriptImages() throws {
+        // The usual case is an analytics beacon, or a copy of an image the page already shows.
+        let body = longBody + """
+        <p>A closing paragraph about widgets.</p>
+        <noscript><img src="https://cdn.example/beacon.png" width="300" height="200"></noscript>
+        """
+        let result = try #require(ArticleExtractor.extract(from: page(articleBody: body), baseURL: base))
+        #expect(!result.html.contains("beacon"))
+    }
+
     @Test("A tracking pixel inside the article is dropped")
     func dropsTrackingPixels() throws {
         let body = longBody + "<p><img src=\"https://tracker.example/p.gif\" width=\"1\" height=\"1\"></p>"

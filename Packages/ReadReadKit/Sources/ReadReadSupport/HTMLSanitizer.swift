@@ -89,6 +89,11 @@ public enum HTMLSanitizer {
             if element.name == "img", isTrackingPixel(element) { return }
 
             let attributes = keptAttributes(of: element, baseURL: baseURL)
+
+            // A placeholder whose `data:` source was refused, with no lazy source behind it,
+            // would render as an empty box.
+            if element.name == "img", attributes["src"] == nil, attributes["srcset"] == nil { return }
+
             let rendered = attributes
                 .sorted { $0.key < $1.key }
                 .map { $0.value.isEmpty ? " \($0.key)" : " \($0.key)=\"\(escapingAttribute($0.value))\"" }
