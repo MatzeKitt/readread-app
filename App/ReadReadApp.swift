@@ -22,6 +22,9 @@ struct ReadReadApp: App {
     @State private var services: AppServices
 
     #if os(macOS)
+    /// Sparkle, started here so the scheduled checks run whether or not the settings window opens.
+    @State private var updater = Updater()
+
     /// Holds up quitting until the last reading position has been sent.
     @NSApplicationDelegateAdaptor(QuitDelegate.self) private var appDelegate
     #else
@@ -75,6 +78,11 @@ struct ReadReadApp: App {
         // Three columns need room; the default content size is far too narrow for a sidebar,
         // a timeline with excerpts, and a readable measure of article text side by side.
         .defaultSize(width: 1_280, height: 820)
+        .commands {
+            CommandGroup(after: .appInfo) {
+                CheckForUpdatesButton(updater: updater)
+            }
+        }
         #endif
 
         #if os(macOS)
@@ -84,6 +92,7 @@ struct ReadReadApp: App {
             SettingsView()
                 .environment(settings)
                 .environment(services)
+                .environment(\.appUpdater, updater)
                 .modelContainer(container)
         }
         #endif
@@ -113,6 +122,22 @@ struct ReadReadApp: App {
     }
     #endif
 }
+
+#if os(macOS)
+/// "Check for Updates…" in the app menu.
+///
+/// A view of its own rather than a button written into `commands`, so that it observes the
+/// updater and is disabled while a check is already running.
+private struct CheckForUpdatesButton: View {
+
+    let updater: Updater
+
+    var body: some View {
+        Button("Check for Updates…") { updater.checkForUpdates() }
+            .disabled(!updater.canCheckForUpdates)
+    }
+}
+#endif
 
 #if os(iOS)
 /// Registers the background refresh task.

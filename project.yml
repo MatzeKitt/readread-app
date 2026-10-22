@@ -42,10 +42,18 @@ settings:
     # in case or a trailing ellipsis ("Reply" / "Reply…") collide on the same symbol, which fails
     # the build.
     STRING_CATALOG_GENERATE_SYMBOLS: NO
+    # The release workflow overrides both with the version from the tag. Sparkle compares
+    # `CFBundleVersion`, so a local build carries the same dotted version rather than a build number
+    # that would rank above every release.
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "$(MARKETING_VERSION)"
 
 packages:
   ReadReadKit:
     path: Packages/ReadReadKit
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.10.0
 
 targets:
   ReadRead:
@@ -63,12 +71,24 @@ targets:
     dependencies:
       - package: ReadReadKit
         product: ReadReadUI
+      # Updates on the Mac only: the iOS app is installed through Xcode or a sideloading tool, and
+      # Sparkle has no iOS build at all.
+      - package: Sparkle
+        destinationFilters: [macOS]
     info:
       path: App/Resources/Info.plist
       properties:
         CFBundleDisplayName: ReadRead
-        CFBundleShortVersionString: "0.1.0"
-        CFBundleVersion: "1"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # Sparkle, read on the Mac only. The feed is the appcast attached to the latest GitHub
+        # release; see `.github/workflows/release.yml`.
+        SUFeedURL: https://github.com/MatzeKitt/readread-app/releases/latest/download/appcast.xml
+        SUPublicEDKey: wPjhLSQiPCWPfgyeY3b4RT6gfFM1AIvaWhTDAR+asWo=
+        SUEnableAutomaticChecks: true
+        # The sandbox keeps the app from replacing itself, so Sparkle hands the installation to its
+        # bundled XPC service. Needs the mach-lookup exceptions in `ReadRead-macOS.entitlements`.
+        SUEnableInstallerLauncherService: true
         ITSAppUsesNonExemptEncryption: false
         LSApplicationCategoryType: public.app-category.news
         CFBundleURLTypes:
@@ -113,6 +133,13 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: NO
         CODE_SIGN_ENTITLEMENTS: App/Resources/ReadRead.entitlements
+        # The Mac adds Sparkle's mach-lookup exceptions, which are temporary-exception entitlements
+        # no iOS provisioning profile would carry.
+        CODE_SIGN_ENTITLEMENTS[sdk=macosx*]: App/Resources/ReadRead-macOS.entitlements
+        # XcodeGen presets the iOS runpath, `@executable_path/Frameworks`, for both platforms. On
+        # the Mac that is `Contents/MacOS/Frameworks`, so the first embedded framework, Sparkle,
+        # was not found and the app aborted at launch.
+        LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]: "$(inherited) @executable_path/../Frameworks"
         # AVKit is *not* linked here, and deliberately not: `ReadReadUI` asks for it with
         # `.linkedFramework("AVKit")` in `Package.swift`, beside the `import AVKit` that needs it,
         # and Xcode carries that through to the app's link. Verified with `otool -L` on a Release

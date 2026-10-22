@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Read by the iOS build only. The Mac signs with ReadRead-macOS.entitlements, which repeats
+	     these two keys and adds Sparkle's exceptions. -->
 	<!-- macOS only; ignored on iOS, where sandboxing is implicit. -->
 	<key>com.apple.security.app-sandbox</key>
 	<true/>

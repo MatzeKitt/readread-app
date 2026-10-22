@@ -12,6 +12,7 @@ import SwiftUI
 public struct SettingsView: View {
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appUpdater) private var updater
 
     public init() {}
 
@@ -29,6 +30,11 @@ public struct SettingsView: View {
             }
             Tab("Filters", systemImage: "line.3.horizontal.decrease.circle") {
                 FilterSettingsTab()
+            }
+            if let updater {
+                Tab("Updates", systemImage: "arrow.triangle.2.circlepath") {
+                    UpdateSettingsTab(updater: updater)
+                }
             }
         }
         // Sized rather than left to fit its content: a preferences window that resizes as you
@@ -643,6 +649,54 @@ private struct FilterSettingsTab: View {
         NavigationStack {
             FilterListView()
         }
+    }
+}
+
+// MARK: - Updates
+
+private struct UpdateSettingsTab: View {
+
+    let updater: any AppUpdater
+
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("Version") {
+                    HStack(spacing: 10) {
+                        Text(verbatim: Self.version)
+                        Button("Check Now") { updater.checkForUpdates() }
+                            .disabled(!updater.canCheckForUpdates)
+                    }
+                }
+
+                Toggle("Check for updates automatically", isOn: automaticallyChecks)
+
+                Toggle("Download and install updates automatically", isOn: automaticallyDownloads)
+                    .disabled(!updater.automaticallyChecksForUpdates)
+            } footer: {
+                Text("Updates are installed the next time ReadRead quits.")
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private static var version: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+    }
+
+    /// Bound by hand, because `@Bindable` needs the concrete type and this only has the protocol.
+    private var automaticallyChecks: Binding<Bool> {
+        Binding(
+            get: { updater.automaticallyChecksForUpdates },
+            set: { updater.automaticallyChecksForUpdates = $0 }
+        )
+    }
+
+    private var automaticallyDownloads: Binding<Bool> {
+        Binding(
+            get: { updater.automaticallyDownloadsUpdates },
+            set: { updater.automaticallyDownloadsUpdates = $0 }
+        )
     }
 }
 
