@@ -75,6 +75,52 @@ Launch with `-ReadReadFixtures` to seed an empty store with sample accounts and 
 UI work without a live account. `-ReadReadFixtureItems 200` makes the timeline big enough for
 scrolling to behave as it does on a real account.
 
+## Installing and updating on the Mac
+
+Download `ReadRead-x.y.z.zip` from the [latest release](https://github.com/MatzeKitt/readread-app/releases/latest)
+and move `ReadRead.app` to Applications. The app isn't notarized, so macOS blocks the first launch:
+open it once, then go to System Settings → Privacy & Security and click "Open Anyway".
+
+After that, ReadRead updates itself with [Sparkle](https://sparkle-project.org). It checks for
+updates once a day, or whenever you choose ReadRead → Check for Updates…. Automatic installation
+can be turned on in Settings → Updates. Debug builds never check, so a build from Xcode isn't
+replaced by a downloaded release.
+
+The app is sandboxed, so Sparkle installs through its bundled installer service. That needs
+`SUEnableInstallerLauncherService` in `Info.plist` and the mach-lookup exceptions in
+[ReadRead-macOS.entitlements](App/Resources/ReadRead-macOS.entitlements).
+
+There are no iOS releases. The iOS app is still built and installed from Xcode.
+
+## Releasing
+
+Pushing a version tag builds, signs, and publishes a release of the Mac app:
+
+```sh
+git tag -a v1.2.3 -m "Release notes in Markdown"
+git push origin v1.2.3
+```
+
+The [release workflow](.github/workflows/release.yml) uses the tag as the app version
+(`MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`), so tags must look like `v1.2.3`. The release
+notes come from the tag message. A lightweight tag gets a list of commits since the previous tag
+instead. The workflow publishes the zipped app together with `appcast.xml`, the Sparkle feed the
+app reads from the latest release.
+
+Updates are signed with an EdDSA key. The public key is `SUPublicEDKey` in
+[project.yml](project.yml). The private key lives in the login keychain under the account
+`readread` and in the `SPARKLE_PRIVATE_KEY` repository secret. To set the secret from the
+keychain, run this after a build has resolved the Sparkle package:
+
+```sh
+DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_keys --account readread -x sparkle-key.txt
+gh secret set SPARKLE_PRIVATE_KEY < sparkle-key.txt
+rm sparkle-key.txt
+```
+
+`DerivedData` is the project's folder under `~/Library/Developer/Xcode/DerivedData` for a build
+from Xcode. Back up the private key. Without it, existing installations can't verify new updates.
+
 ## Layout
 
 ```

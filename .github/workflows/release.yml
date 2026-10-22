@@ -1,0 +1,107 @@
+name: Release
+
+# Pushing a tag like v1.2.3 builds the Mac app, signs the update for Sparkle and
+# publishes a GitHub release with the zipped app and appcast.xml. The app reads
+# its feed from releases/latest/download/appcast.xml, so every release replaces
+# the feed of the one before. The iOS app isn't built here.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    env:
+      DERIVED_DATA: build/DerivedData
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Read version from tag
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          # Sparkle compares CFBundleVersion, which may only contain numbers and dots.
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME isn't a version like v1.2.3."
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "ARCHIVE=ReadRead-$version.zip" >> "$GITHUB_ENV"
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Build
+        run: |
+          xcodebuild -version
+          xcodegen generate
+          # Ad-hoc signed: Sparkle checks updates against the EdDSA key in Info.plist.
+          xcodebuild -project ReadRead.xcodeproj -scheme ReadRead -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath "$DERIVED_DATA" \
+            MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$VERSION" \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
+            build
+
+      - name: Package
+        run: |
+          app="$DERIVED_DATA/Build/Products/Release/ReadRead.app"
+          codesign --verify --deep --strict "$app"
+          ditto -c -k --sequesterRsrc --keepParent "$app" "$ARCHIVE"
+          echo "MINIMUM_SYSTEM_VERSION=$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$app/Contents/Info.plist")" >> "$GITHUB_ENV"
+
+      - name: Write release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # checkout turns annotated tags into lightweight ones, so fetch them again.
+          git fetch --force --tags
+          if [ "$(git cat-file -t "$GITHUB_REF_NAME")" = tag ]; then
+            git tag -l --format='%(contents:subject)%0a%0a%(contents:body)' "$GITHUB_REF_NAME" > notes.md
+          elif previous=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null); then
+            git log --no-merges --format='- %s' "$previous..$GITHUB_REF_NAME" > notes.md
+          else
+            git log --no-merges --format='- %s' "$GITHUB_REF_NAME" > notes.md
+          fi
+          gh api markdown -f text="$(cat notes.md)" -f mode=gfm -f context="$GITHUB_REPOSITORY" > notes.html
+
+      - name: Sign update and write appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          if [ -z "$SPARKLE_PRIVATE_KEY" ]; then
+            echo "::error::The SPARKLE_PRIVATE_KEY secret is missing."
+            exit 1
+          fi
+          signature=$(echo "$SPARKLE_PRIVATE_KEY" | "$DERIVED_DATA/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update" --ed-key-file - "$ARCHIVE")
+          cat > appcast.xml <<XML
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+            <channel>
+              <title>ReadRead</title>
+              <item>
+                <title>Version $VERSION</title>
+                <pubDate>$(LC_ALL=C date -u '+%a, %d %b %Y %H:%M:%S +0000')</pubDate>
+                <sparkle:version>$VERSION</sparkle:version>
+                <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
+                <sparkle:minimumSystemVersion>$MINIMUM_SYSTEM_VERSION</sparkle:minimumSystemVersion>
+                <description><![CDATA[$(cat notes.html)]]></description>
+                <enclosure url="https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/$ARCHIVE" type="application/octet-stream" $signature/>
+              </item>
+            </channel>
+          </rss>
+          XML
+          xmllint --noout appcast.xml
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "$ARCHIVE" appcast.xml \
+            --verify-tag --title "ReadRead $VERSION" --notes-file notes.md
