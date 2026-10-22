@@ -42,13 +42,13 @@ public enum ArticleExtractor {
     /// or paywalled, and the feed's own summary — however truncated — is the better answer.
     static let minimumTextLength = 200
 
-    /// When the heuristic last changed in a way that can turn a page it found nothing in into one
-    /// it extracts. Move it forward with every such change.
+    /// When the heuristic last changed in a way that changes what a page extracts to. Move it
+    /// forward with every such change.
     ///
-    /// A page that extracted nothing is remembered as such and never fetched again, so without
-    /// this a fix would only reach articles nobody had opened yet — the very pages it was written
-    /// for would keep showing the feed's summary.
-    public static let lastRevised = Date(timeIntervalSince1970: 1_792_698_000) // 2026-10-22 19:40 UTC
+    /// Extractions are cached for good — the article, or the verdict that there was none — so
+    /// without this a fix would only reach articles nobody had opened yet. The very pages it was
+    /// written for would keep showing the feed's summary, or the article without its images.
+    public static let lastRevised = Date(timeIntervalSince1970: 1_792_699_200) // 2026-10-22 20:00 UTC
 
     /// Extracts the readable body, or `nil` when the page has nothing usable in its HTML.
     public static func extract(from html: String, baseURL: URL?) -> ExtractedArticle? {
@@ -57,6 +57,9 @@ public enum ArticleExtractor {
         // Before stripping: `<title>` lives in `<head>`, and `<meta>` is discarded below.
         let title = documentTitle(in: root)
 
+        // Before stripping too: `<noscript>` is discarded there, and with it the only real copy
+        // of every lazily loaded image.
+        restoreNoscriptImages(in: root)
         strip(root)
 
         let scorer = Scorer(root: root)
@@ -72,6 +75,47 @@ public enum ArticleExtractor {
         guard !serialised.isEmpty else { return nil }
 
         return ExtractedArticle(html: serialised, title: title, textLength: textLength)
+    }
+
+    // MARK: - Lazy images
+
+    /// Puts the image a `<noscript>` holds in place of the placeholder just before it.
+    ///
+    /// Lazy loaders ship a placeholder — a grey `data:` SVG, a spacer GIF — and leave the real file
+    /// for a script to swap in, with a `<noscript>` copy for readers without one. Nothing here runs
+    /// that script, and `<noscript>` is stripped, so without this only the placeholder survives,
+    /// and the sanitiser then drops its `data:` source as well. heise does this to every image in
+    /// an article: `<a-img src="…"><img src="data:…"></a-img><noscript><img src="…"></noscript>`.
+    ///
+    /// Only where a placeholder precedes it, as Readability does: a `<noscript>` image on its own
+    /// is usually a tracking pixel or a copy of an image the page already shows.
+    static func restoreNoscriptImages(in root: HTMLElement) {
+        for noscript in root.descendants where noscript.name == "noscript" {
+            guard let parent = noscript.parent,
+                  case .text(let raw)? = noscript.children.first,
+                  let image = singleImage(in: HTMLParser.parse(raw)),
+                  let position = parent.children.firstIndex(where: { node in
+                      if case .element(let element) = node { return element === noscript }
+                      return false
+                  })
+            else { continue }
+
+            let previous = parent.children[..<position].reversed().lazy.compactMap { node -> HTMLElement? in
+                if case .element(let element) = node { element } else { nil }
+            }.first
+            guard let previous, singleImage(in: previous) != nil else { continue }
+
+            previous.replace(with: image)
+        }
+    }
+
+    /// The `<img>` an element amounts to: the element itself, or the only thing inside it however
+    /// deeply wrapped, as long as no text sits beside it.
+    private static func singleImage(in element: HTMLElement) -> HTMLElement? {
+        if element.name == "img" { return element }
+        let children = element.childElements
+        guard children.count == 1, element.text.isEmpty else { return nil }
+        return singleImage(in: children[0])
     }
 
     // MARK: - Stripping

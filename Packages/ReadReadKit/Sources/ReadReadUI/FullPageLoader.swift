@@ -55,22 +55,26 @@ final class FullPageLoader {
             return
         }
 
+        let isCurrent = (item.fullPageFetchedAt ?? .distantPast) >= ArticleExtractor.lastRevised
+
         // Already extracted. Set synchronously rather than through the task, so re-selecting a
-        // read article never flashes a spinner over content that is already in hand.
+        // read article never flashes a spinner over content that is already in hand — not even
+        // when an older extractor produced it, which is then fetched again behind it.
         if let cached = item.fullPageHTML {
             state = .loaded(html: cached)
-            return
-        }
-        if let fetchedAt = item.fullPageFetchedAt, fetchedAt >= ArticleExtractor.lastRevised {
+            if isCurrent { return }
+        } else if isCurrent {
             // Fetched before and found nothing. Retrying on every selection would mean a request
             // per keypress while arrowing through a feed that does not extract. A verdict from an
             // older extractor falls through and is fetched once more.
             state = .unusable
             return
+        } else {
+            state = .loading
         }
 
-        state = .loading
         let itemID = item.id
+        let isRefreshing = item.fullPageHTML != nil
 
         task = Task { [weak self, fetcher] in
             do {
@@ -80,7 +84,7 @@ final class FullPageLoader {
             } catch is CancellationError {
                 return
             } catch {
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, !isRefreshing else { return }
                 // Not cached: unlike an unusable page, a failed fetch is a transient condition and
                 // the next attempt may well succeed.
                 self?.state = .failed(Self.describe(error))
@@ -109,8 +113,10 @@ final class FullPageLoader {
             state = .loaded(html: html)
         case .unusable:
             // Recorded so the next selection does not re-fetch a page already known to hold
-            // nothing.
-            state = .unusable
+            // nothing. An article an older extractor did find is kept rather than replaced by
+            // nothing: the page has changed since, or this extractor regressed on it, and either
+            // way what is on screen is the better answer.
+            if item?.fullPageHTML == nil { state = .unusable }
         }
         item?.fullPageFetchedAt = .now
         try? context.save()
