@@ -33,12 +33,14 @@ struct ReplyParentTests {
         inReplyTo: String? = nil,
         spoiler: String = "",
         author: String = "Ada",
-        quote: String = "null"
+        quote: String = "null",
+        origin: String = "mastodon.social",
+        originID: String? = nil
     ) -> String {
         """
         {
             "id": "\(id)",
-            "uri": "https://mastodon.social/users/a/statuses/\(id)",
+            "uri": "https://\(origin)/users/a/statuses/\(originID ?? id)",
             "created_at": "2026-09-03T12:00:00.000Z",
             "content": "<p>\(content)</p>",
             "visibility": "public", "sensitive": false, "spoiler_text": "\(spoiler)",
@@ -63,6 +65,9 @@ struct ReplyParentTests {
         _ = try await planner.ingest()
         return sink
     }
+
+    /// The `created_at` every status in ``statusJSON`` carries.
+    private let publishedAt = ISO8601DateFormatter().date(from: "2026-09-03T12:00:00Z")!
 
     private func parent(of statusID: String, in sink: RecordingIngestSink) async -> ReplyParentLookup? {
         await sink.items[SourceIdentifier.mastodonItem(accountID: accountID, statusID: statusID)]?.replyParent
@@ -366,5 +371,189 @@ struct ReplyParentTests {
         #expect(filled?.replyParent?.authorName == "Manuel")
         #expect(filled?.replyParentIsQuote == true)
         #expect(await transport.urls == ["https://mastodon.social/api/v1/statuses/9"])
+    }
+
+    // MARK: - Pending quotes
+
+    private let pendingQuote = #"{"state": "pending", "quoted_status": null}"#
+
+    /// A client for the quoting post's own server, on the same script as the reader's instance so
+    /// a test reads as the order the requests go out in.
+    private func originClient(_ transport: StubTransport) -> @Sendable (URL) -> MastodonClient {
+        { url in
+            MastodonClient(
+                instanceURL: url,
+                accessToken: nil,
+                http: HTTPClient(transport: transport, policy: RetryPolicy(maxAttempts: 1), clock: TestClock())
+            )
+        }
+    }
+
+    /// A stored quote post, as the reported one was: fetched while its quote was pending.
+    private func storedPendingQuote() throws -> ModelContainer {
+        var row = storedRow(id: "9", json: statusJSON(id: "9", content: "Look"), inReplyTo: nil)
+        row.contentHTML = quoteFallback + "<p>Look</p>"
+        return try store([row])
+    }
+
+    /// A quoting post on mas.to, as the reader's instance holds it: under its own id, `9`, and
+    /// with the quote still pending.
+    private var pendingOnInstance: String {
+        statusJSON(id: "9", content: "Look", quote: pendingQuote, origin: "mas.to", originID: "117453084523853007")
+    }
+
+    @Test("A quote still waiting for approval is left for the backfill")
+    func pendingQuoteIsNotRecorded() async throws {
+        let sink = try await ingest(StubTransport([.json("[\(pendingOnInstance)]")]))
+
+        #expect(await sink.items[SourceIdentifier.mastodonItem(accountID: accountID, statusID: "9")] != nil)
+        #expect(await parent(of: "9", in: sink) == nil)
+    }
+
+    /// The case that was reported second: the reader's instance kept the quote pending for days,
+    /// while mas.to, where the quoting post lives, had it approved. The quoted post is resolved on
+    /// the reader's instance, so its ids are ones this account can act on.
+    @Test("A quote pending here and approved at its origin is shown, resolved on this instance")
+    func approvedAtOrigin() async throws {
+        let container = try storedPendingQuote()
+        let atOrigin = statusJSON(
+            id: "117453084523853007",
+            content: "Look",
+            quote: acceptedQuote(of: statusJSON(id: "117452679557772844", content: "Flock", author: "Benjamin")),
+            origin: "mas.to"
+        )
+        let resolved = statusJSON(id: "4242", content: "Flock", author: "Benjamin")
+        let transport = StubTransport([
+            .json(pendingOnInstance),
+            .json(atOrigin),
+            .json(#"{"statuses": [\#(resolved)], "accounts": []}"#),
+        ])
+
+        let answered = try await ReplyParentBackfill(modelContainer: container)
+            .fill(accountID: accountID, client: makeClient(transport), originClient: originClient(transport))
+
+        #expect(answered == 1)
+        let row = try stored("9", in: container)
+        #expect(row?.replyParent?.authorName == "Benjamin")
+        #expect(row?.replyParentIsQuote == true)
+        let payload = try #require(row?.replyParentPayload)
+        #expect(try JSONDecoder.mastodon.decode(MastodonStatus.self, from: payload).id.rawValue == "4242")
+
+        let urls = await transport.urls
+        #expect(urls.count == 3)
+        #expect(urls.dropFirst().first == "https://mas.to/api/v1/statuses/117453084523853007")
+        #expect(urls.last?.hasPrefix("https://mastodon.social/api/v2/search") == true)
+        // Anonymous: the reader's token is for their own instance and goes nowhere else.
+        let requests = await transport.requests
+        #expect(requests[1].value(forHTTPHeaderField: "Authorization") == nil)
+    }
+
+    @Test("A quote refused at its origin is an answer")
+    func refusedAtOrigin() async throws {
+        let container = try storedPendingQuote()
+        let atOrigin = statusJSON(
+            id: "117453084523853007",
+            content: "Look",
+            quote: #"{"state": "revoked", "quoted_status": null}"#,
+            origin: "mas.to"
+        )
+        let transport = StubTransport([.json(pendingOnInstance), .json(atOrigin)])
+
+        try await ReplyParentBackfill(modelContainer: container)
+            .fill(accountID: accountID, client: makeClient(transport), originClient: originClient(transport))
+
+        #expect(try stored("9", in: container)?.replyParentAuthorName == "")
+        #expect(await transport.requestCount == 2)
+    }
+
+    @Test("A quote pending everywhere is asked about again, then approved")
+    func pendingEverywhereThenApproved() async throws {
+        let container = try storedPendingQuote()
+        let pendingAtOrigin = statusJSON(
+            id: "117453084523853007", content: "Look", quote: pendingQuote, origin: "mas.to"
+        )
+        let approvedHere = statusJSON(
+            id: "9",
+            content: "Look",
+            quote: acceptedQuote(of: statusJSON(id: "3", content: "Submit to HTMHell", author: "Manuel"))
+        )
+        let transport = StubTransport([.json(pendingOnInstance), .json(pendingAtOrigin), .json(approvedHere)])
+        let backfill = ReplyParentBackfill(modelContainer: container)
+        let now = publishedAt.addingTimeInterval(60)
+
+        let first = try await backfill.fill(
+            accountID: accountID, client: makeClient(transport), now: now, originClient: originClient(transport)
+        )
+        #expect(first == 0)
+        #expect(try stored("9", in: container)?.replyParentAuthorName == nil)
+
+        try await backfill.fill(
+            accountID: accountID, client: makeClient(transport), now: now, originClient: originClient(transport)
+        )
+        #expect(try stored("9", in: container)?.replyParent?.authorName == "Manuel")
+        #expect(await transport.requestCount == 3)
+    }
+
+    /// A quote nobody ever decides would otherwise be asked about after every refresh.
+    @Test("A quote still undecided after a day is an answer")
+    func undecidedAfterADay() async throws {
+        let container = try storedPendingQuote()
+        let transport = StubTransport([.json(pendingOnInstance), .status(401)])
+
+        try await ReplyParentBackfill(modelContainer: container).fill(
+            accountID: accountID,
+            client: makeClient(transport),
+            now: publishedAt.addingTimeInterval(2 * 24 * 60 * 60),
+            originClient: originClient(transport)
+        )
+
+        #expect(try stored("9", in: container)?.replyParentAuthorName == "")
+    }
+
+    @Test("A post's own server is read off its ActivityPub address")
+    func originOfAPost() throws {
+        let decode = { (json: String) in try JSONDecoder.mastodon.decode(MastodonStatus.self, from: Data(json.utf8)) }
+
+        let origin = try #require(ReplyParentResolver.origin(of: decode(pendingOnInstance)))
+        #expect(origin.instanceURL.absoluteString == "https://mas.to")
+        #expect(origin.id.rawValue == "117453084523853007")
+
+        let otherShape = statusJSON(id: "9", content: "Look").replacingOccurrences(
+            of: "/users/a/statuses/9", with: "/notes/9xk2"
+        )
+        #expect(ReplyParentResolver.origin(of: try decode(otherShape)) == nil)
+    }
+
+    /// Rows recorded before pending quotes were asked about again: the reported post among them.
+    @Test("Quote posts recorded as having nothing to show are reopened, once")
+    func unshownQuotesAreReopened() throws {
+        var quotePost = storedRow(id: "9", json: statusJSON(id: "9", content: "Look"), inReplyTo: nil)
+        quotePost.contentHTML = quoteFallback + "<p>Look</p>"
+        quotePost.record(.unavailable)
+        // A reply whose parent was deleted, which no quote has anything to do with.
+        let reply = storedRow(id: "8", json: statusJSON(id: "8", content: "Agreed", inReplyTo: "5"), inReplyTo: "5")
+        reply.record(.unavailable)
+        let container = try store([quotePost, reply])
+        let defaults = try #require(UserDefaults(suiteName: "readread.quotes.\(UUID().uuidString)"))
+
+        let reopened = try ReplyParentBackfill.reopenUnshownQuotesIfNeeded(
+            in: ModelContext(container),
+            defaults: defaults
+        )
+
+        #expect(reopened == 1)
+        #expect(try stored("9", in: container)?.replyParentAuthorName == nil)
+        #expect(try stored("8", in: container)?.replyParentAuthorName == "")
+
+        // Recorded again by the backfill, and not reopened a second time.
+        let row = try #require(try stored("9", in: container))
+        row.record(.unavailable)
+        try row.modelContext?.save()
+        let again = try ReplyParentBackfill.reopenUnshownQuotesIfNeeded(
+            in: ModelContext(container),
+            defaults: defaults
+        )
+        #expect(again == 0)
+        #expect(try stored("9", in: container)?.replyParentAuthorName == "")
     }
 }

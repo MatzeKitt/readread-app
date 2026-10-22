@@ -154,8 +154,8 @@ public struct ReplyParentResolver: Sendable {
     /// one. It also costs nothing: it arrives inside the quote.
     ///
     /// - Parameter replyParents: Lookups for reply parents, keyed by the parent's id.
-    /// - Returns: Nil when there is nothing to record yet: not a reply and not a quote, or a reply
-    ///   whose parent was not answered.
+    /// - Returns: Nil when there is nothing to record yet: not a reply and not a quote, a reply
+    ///   whose parent was not answered, or a quote still pending on this instance.
     public static func contextLookup(
         for status: MastodonStatus,
         replyParents: [String: ReplyParentLookup]
@@ -166,15 +166,95 @@ public struct ReplyParentResolver: Sendable {
             if let quoted = quote.shownStatus {
                 return lookup(for: quoted, isQuote: true)
             }
-            // A quote that may not be shown — pending, revoked, deleted — on a post that replies to
-            // nothing: an answer, so the backfill's search for quote posts stops matching it. The
-            // post's own "RE: <link>" line stays, and is the honest thing to show.
             if display.inReplyToId == nil {
+                // Not an answer this instance can give: left unrecorded, for the backfill to ask
+                // the quoting post's own server. See `lookUpPendingQuote`.
+                if quote.isPending {
+                    return nil
+                }
+                // A quote that may not be shown — refused, revoked, deleted — on a post that
+                // replies to nothing: an answer, so the backfill's search for quote posts stops
+                // matching it. The post's own "RE: <link>" line stays, and is the honest thing to
+                // show.
                 return .unavailable
             }
         }
 
         return display.inReplyToId.flatMap { replyParents[$0] }
+    }
+
+    /// What the quoting post's own server says about a quote still pending on this instance.
+    public enum PendingQuoteAnswer: Sendable {
+        /// Approved, and the quoted post as this instance holds it.
+        case found(ReplyParentLookup)
+
+        /// Refused, revoked or gone, or a quoted post this account may not see: nothing to show.
+        case refused
+
+        /// Not decided there either, or the question could not be put. Worth asking again.
+        case undecided
+    }
+
+    /// Asks the quoting post's own server whether a quote still pending here was approved, and
+    /// looks the quoted post up on this instance when it was.
+    ///
+    /// The server a quoting post comes from hears about the approval first-hand. Every other
+    /// instance has to verify it, and one whose check fails keeps the quote pending for good: the
+    /// post that was reported was still pending on the reader's instance six days after mas.to had
+    /// it approved. Asked anonymously, as anybody may ask about a public post.
+    ///
+    /// The quoted post is then resolved on this instance by its address rather than taken from the
+    /// other server's answer, because its ids are what this account acts on — the reading pane opens
+    /// its author's profile by them.
+    func lookUpPendingQuote(
+        of status: MastodonStatus,
+        originClient: (URL) -> MastodonClient
+    ) async -> PendingQuoteAnswer {
+        guard let origin = Self.origin(of: status.displayStatus) else { return .undecided }
+
+        let original: MastodonStatus?
+        do {
+            original = try await originClient(origin.instanceURL).status(origin.id)
+        } catch {
+            // Offline, or a server that does not answer anonymous requests: the window decides.
+            return .undecided
+        }
+        guard let quote = original?.quote else {
+            // Deleted there, or edited to quote nothing.
+            return .refused
+        }
+        if quote.isPending {
+            return .undecided
+        }
+        guard let quoted = quote.shownStatus, let address = URL(string: quoted.uri) else {
+            return .refused
+        }
+
+        do {
+            guard let local = try await client.resolveStatus(url: address) else { return .refused }
+            return .found(Self.lookup(for: local, isQuote: true))
+        } catch {
+            return .undecided
+        }
+    }
+
+    /// Where a post comes from: its own server, and its id there.
+    ///
+    /// Read off the ActivityPub address Mastodon gives every post,
+    /// `https://<host>/users/<name>/statuses/<id>`. Nil for a post whose server names its posts
+    /// some other way, which is not asked about at all.
+    static func origin(of status: MastodonStatus) -> (instanceURL: URL, id: MastodonStatusID)? {
+        guard
+            let address = URL(string: status.uri),
+            let host = address.host(),
+            let instanceURL = URL(string: "https://\(host)")
+        else { return nil }
+
+        let parts = address.pathComponents
+        guard parts.count == 5, parts[1] == "users", parts[3] == "statuses", !parts[4].isEmpty else {
+            return nil
+        }
+        return (instanceURL, MastodonStatusID(parts[4]))
     }
 
     /// Whether a post needs its reply parent fetched: a reply, unless a quote will take the slot.

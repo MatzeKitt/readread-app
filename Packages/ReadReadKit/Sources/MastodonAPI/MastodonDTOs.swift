@@ -104,6 +104,12 @@ public struct MastodonQuote: Codable, Sendable {
     public var shownStatus: MastodonStatus? {
         state == "accepted" ? quotedStatus : nil
     }
+
+    /// Whether the quoted author's instance has yet to approve the quote.
+    ///
+    /// The one state that is not an answer. A quote of a post on another instance starts here and
+    /// usually turns `accepted` within seconds — minutes, when that instance is slow to reply.
+    public var isPending: Bool { state == "pending" }
 }
 
 /// A status's conversation: what came before it, and what came after.
