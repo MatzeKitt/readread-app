@@ -42,6 +42,14 @@ public enum ArticleExtractor {
     /// or paywalled, and the feed's own summary — however truncated — is the better answer.
     static let minimumTextLength = 200
 
+    /// When the heuristic last changed in a way that can turn a page it found nothing in into one
+    /// it extracts. Move it forward with every such change.
+    ///
+    /// A page that extracted nothing is remembered as such and never fetched again, so without
+    /// this a fix would only reach articles nobody had opened yet — the very pages it was written
+    /// for would keep showing the feed's summary.
+    public static let lastRevised = Date(timeIntervalSince1970: 1_792_698_000) // 2026-10-22 19:40 UTC
+
     /// Extracts the readable body, or `nil` when the page has nothing usable in its HTML.
     public static func extract(from html: String, baseURL: URL?) -> ExtractedArticle? {
         let root = HTMLParser.parse(html)
@@ -85,12 +93,19 @@ public enum ArticleExtractor {
     /// `comment-wrapper` and `js-commentList` alike, and a word-boundary match would miss all
     /// three.
     static let negativeSignals = [
-        "comment", "share", "sharing", "social", "sidebar", "side-bar", "widget", "advert",
+        "comment", "share", "sharing", "social", "sidebar", "side-bar", "advert",
         "ad-container", "adsense", "banner", "promo", "sponsor", "related", "recirc",
         "newsletter", "subscribe", "signup", "sign-up", "paywall", "popup", "modal", "cookie",
         "consent", "breadcrumb", "pagination", "footer", "masthead", "menu", "navigation",
         "toolbar", "author-box", "disqus", "skip-link",
     ]
+
+    /// Fragments that count against a block when scoring but are no reason to remove it.
+    ///
+    /// Page builders name their layout after widgets: heise wraps the whole article in
+    /// `gridContainer DetailExtendedWidgets1`, Elementor puts every text block inside an
+    /// `elementor-widget-container`. Stripping on `widget` threw the article away with the grid.
+    static let weakNegativeSignals = ["widget"]
 
     /// Class and id fragments that mark a block as likely article.
     static let positiveSignals = [
@@ -247,7 +262,8 @@ public enum ArticleExtractor {
             let signature = element.classAndID
             guard !signature.isEmpty else { return 0 }
             if positiveSignals.contains(where: signature.contains) { return 12 }
-            if negativeSignals.contains(where: signature.contains) { return -12 }
+            if negativeSignals.contains(where: signature.contains)
+                || weakNegativeSignals.contains(where: signature.contains) { return -12 }
             return 0
         }
     }

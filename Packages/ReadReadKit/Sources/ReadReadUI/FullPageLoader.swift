@@ -61,9 +61,10 @@ final class FullPageLoader {
             state = .loaded(html: cached)
             return
         }
-        if item.fullPageFetchedAt != nil {
+        if let fetchedAt = item.fullPageFetchedAt, fetchedAt >= ArticleExtractor.lastRevised {
             // Fetched before and found nothing. Retrying on every selection would mean a request
-            // per keypress while arrowing through a feed that does not extract.
+            // per keypress while arrowing through a feed that does not extract. A verdict from an
+            // older extractor falls through and is fetched once more.
             state = .unusable
             return
         }
