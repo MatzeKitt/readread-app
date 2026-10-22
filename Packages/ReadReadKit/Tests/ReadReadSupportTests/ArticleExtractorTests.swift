@@ -104,6 +104,35 @@ struct ArticleExtractorTests {
         #expect(occurrences == 2)
     }
 
+    @Test("An article inside a layout grid named after widgets is not stripped with it")
+    func keepsArticleInsideWidgetGrid() throws {
+        // heise's markup, reduced: every layout container is a "widget", and the outer ones carry
+        // no positive token to vouch for them.
+        let grid = """
+        <div class="gridComponentPage" data-content-type="Story">
+        <div class="gridContainer DetailExtendedWidgets1 _gridContainer_euhmx_2">
+        <div class="gridBox box_middle gridCol9">
+        <div id="DetailExtendedWidgets1--box_middle--4" class="gridWidget gridWidgetTypeDetailContent">
+        <div class="StoryContent">\(longBody)</div>
+        </div></div></div></div>
+        """
+        let result = try #require(ArticleExtractor.extract(from: grid, baseURL: base))
+
+        #expect(result.html.contains("Paragraph 1 about widgets"))
+        #expect(result.html.contains("Paragraph 6 about widgets"))
+    }
+
+    @Test("An Elementor text block keeps its text")
+    func keepsElementorWidgetContainer() throws {
+        let elementor = """
+        <div class="elementor-element elementor-widget elementor-widget-text-editor">
+        <div class="elementor-widget-container">\(longBody)</div>
+        </div>
+        """
+        let result = try #require(ArticleExtractor.extract(from: elementor, baseURL: base))
+        #expect(result.html.contains("Paragraph 6 about widgets"))
+    }
+
     @Test("A page with no article in its HTML extracts nothing rather than a stub")
     func clientRenderedPageYieldsNil() {
         let shell = """
