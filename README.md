@@ -65,9 +65,18 @@ make clean         # remove build products and the generated project
 ### Signing
 
 The project is configured for **ad-hoc signing** (`CODE_SIGN_IDENTITY = "-"`), which is enough to
-run locally on both platforms and still applies the sandbox and network entitlements. To run on a
-physical iOS device or to distribute, set `DEVELOPMENT_TEAM` and switch `CODE_SIGN_STYLE` to
-`Automatic` in [project.yml](project.yml), then regenerate.
+run locally on both platforms and still applies the sandbox and network entitlements. The settings
+live in [Config/Signing.xcconfig](Config/Signing.xcconfig), not in `project.yml`.
+
+An ad-hoc Mac build asks for the login-keychain password after every rebuild, because the Keychain
+knows it only by its code hash. To stop that, copy
+[Config/Signing.local.xcconfig.example](Config/Signing.local.xcconfig.example) to
+`Config/Signing.local.xcconfig` (gitignored), fill in your team and regenerate. The Mac build is
+then signed with your development certificate, and access needs to be granted only once. The local
+file survives `make generate`.
+
+To run on a physical iOS device or to distribute, switch the target to `Automatic` signing with
+your team in Xcode.
 
 ### Debug fixtures
 

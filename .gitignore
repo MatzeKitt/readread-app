@@ -13,3 +13,6 @@ server/vendor/
 server/*.sqlite
 server/*.sqlite-journal
 server/.env
+
+# Local signing overrides; see Config/Signing.local.xcconfig.example
+Config/Signing.local.xcconfig

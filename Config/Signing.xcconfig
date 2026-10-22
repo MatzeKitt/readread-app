@@ -1,0 +1,23 @@
+// Code signing for the ReadRead target.
+//
+// The default is ad-hoc ("Sign to Run Locally") on both platforms, so a fresh clone builds with no
+// Apple account at all. Ad-hoc still applies the sandbox and network entitlements, and the iOS
+// Simulator needs no signing at all, so local behaviour on both platforms is faithful.
+//
+// Automatic signing wants a "Mac Development" certificate for macOS, which the available
+// "Apple Development" identity does not satisfy, and `CODE_SIGN_STYLE` does not reliably honour
+// `[sdk=…]` conditionals — so a per-platform split of the *style* does not work.
+//
+// These live here rather than in `project.yml` so that `Signing.local.xcconfig`, which is
+// gitignored, can override them and survive `make generate`. A setting written into the project
+// itself would outrank this file, so `project.yml` must not set any of them.
+//
+// The release workflow passes its own values on the command line, which outrank both files.
+
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+PROVISIONING_PROFILE_SPECIFIER =
+
+// Optional: absent in a fresh clone and in CI. See `Signing.local.xcconfig.example`.
+#include? "Signing.local.xcconfig"

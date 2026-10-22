@@ -232,9 +232,11 @@ public struct KeychainStore: Sendable {
     /// demand a provisioning profile.
     ///
     /// So both are supported, chosen at runtime by what the running binary is actually allowed to
-    /// do. Set `DEVELOPMENT_TEAM` and the app moves to the data-protection keychain and stops
-    /// prompting; leave it ad-hoc and secrets still work, at the cost of a prompt after each
-    /// rebuild.
+    /// do. Sign with a provisioning profile and the app moves to the data-protection keychain;
+    /// leave it ad-hoc and secrets still work, at the cost of a prompt after each rebuild. The
+    /// middle way, and the one `Config/Signing.local.xcconfig.example` sets up, is a development
+    /// certificate without a profile: still the legacy keychain, but its ACL names a designated
+    /// requirement that survives rebuilds, so "Always Allow" is answered once.
     ///
     /// The fallback deliberately does **not** migrate items between the two. An item written to
     /// one is invisible to the other, so changing signing configuration means re-entering
