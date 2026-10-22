@@ -305,6 +305,12 @@ public struct RootView: View {
             // Items lists.
             _ = try? await backfill.fillMissingDuplicateKeys()
 
+            // Before the first refresh, whose reply-parent backfill is what looks at the reopened
+            // rows. Off the main actor: it searches the body of every stored post.
+            _ = try? await Task.detached {
+                try ReplyParentBackfill.reopenUnshownQuotesIfNeeded(in: ModelContext(container))
+            }.value
+
             // Not awaited, unlike the backfills above: it strips the body of every article already
             // stored, which is seconds of work that must not hold up the window. Started after the
             // migrations, which rewrite the same rows. See `SearchTextBackfill`.
