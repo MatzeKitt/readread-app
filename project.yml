@@ -21,20 +21,8 @@ settings:
     SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY: YES
     ENABLE_USER_SCRIPT_SANDBOXING: YES
 
-    # Ad-hoc signing ("Sign to Run Locally") for development on both platforms.
-    #
-    # Automatic signing wants a "Mac Development" certificate for macOS, which the available
-    # "Apple Development" identity does not satisfy, and `CODE_SIGN_STYLE` does not reliably honour
-    # `[sdk=…]` conditionals — so a per-platform split here does not work. Ad-hoc still applies the
-    # sandbox and network entitlements, and the iOS Simulator needs no signing at all, so local
-    # behaviour on both platforms is faithful.
-    #
-    # To run on an iOS device or to distribute: set DEVELOPMENT_TEAM to DBN7SA2WV6 and
-    # CODE_SIGN_STYLE to Automatic.
-    CODE_SIGN_STYLE: Manual
-    CODE_SIGN_IDENTITY: "-"
-    DEVELOPMENT_TEAM: ""
-    PROVISIONING_PROFILE_SPECIFIER: ""
+    # Signing is not set here but in `Config/Signing.xcconfig`, attached to the target below. A
+    # value here or in the target's `settings` would outrank that file and its local override.
     GCC_TREAT_WARNINGS_AS_ERRORS: NO
     SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
     # XcodeGen defaults this to YES. The symbols would only exist in the app target, while the
@@ -114,13 +102,16 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+    # Code signing, with an optional gitignored local override; see the file. XcodeGen leaves out
+    # its own presets for any setting this file defines — otherwise its target-level
+    # `CODE_SIGN_IDENTITY = "iPhone Developer"` would win over it.
+    configFiles:
+      Debug: Config/Signing.xcconfig
+      Release: Config/Signing.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kittmedia.ReadRead
         PRODUCT_NAME: ReadRead
-        # Repeated from the project level because XcodeGen writes its own
-        # `CODE_SIGN_IDENTITY = "iPhone Developer"` onto app targets, which would otherwise win.
-        CODE_SIGN_IDENTITY: "-"
         GENERATE_INFOPLIST_FILE: NO
         # Resolves to `App/Resources/AppIcon.icon`. An Icon Composer icon is a top-level asset
         # catalogue input in its own right (`folder.iconcomposer.icon` is based on

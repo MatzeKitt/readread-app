@@ -1,0 +1,18 @@
+// Copy to `Signing.local.xcconfig` (gitignored) and fill in your own team.
+//
+// Signs the Mac build with a real development certificate instead of ad-hoc. That is what stops
+// macOS asking for the login-keychain password after every rebuild: an ad-hoc build is identified
+// by its code hash, which every build changes, so each one looks like a different app to the
+// Keychain items the last one wrote. A certificate-signed build keeps the same designated
+// requirement across builds, so "Always Allow" sticks.
+//
+// Manual style with no provisioning profile: the Mac needs none for the sandbox entitlements, and
+// without one nothing expires. The app then keeps using the legacy login keychain, see
+// `KeychainStore.perform(purpose:key:_:)`.
+//
+// Only the Mac SDK is overridden. iOS device builds still need Automatic signing, set in Xcode.
+
+CODE_SIGN_IDENTITY[sdk=macosx*] = Apple Development
+// The team, not the certificate ID in the identity's name: the `OU` of
+// `security find-certificate -c "Apple Development" -p | openssl x509 -noout -subject`.
+DEVELOPMENT_TEAM[sdk=macosx*] = XXXXXXXXXX
