@@ -970,6 +970,17 @@
         }
       }
     },
+    "Content warning: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inhaltswarnung: %@"
+          }
+        }
+      }
+    },
     "Continue": {
       "extractionState": "manual",
       "localizations": {
@@ -3261,17 +3272,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Medien anzeigen"
-          }
-        }
-      }
-    },
-    "Show Post": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Beitrag anzeigen"
           }
         }
       }

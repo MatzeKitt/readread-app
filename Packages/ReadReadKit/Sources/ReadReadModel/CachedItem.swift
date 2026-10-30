@@ -269,6 +269,14 @@ public final class CachedItem {
     public var replyParentHasContentWarning: Bool = false
     public var replyParentIsQuote: Bool = false
 
+    /// The parent's content warning, when it has one.
+    ///
+    /// Added after ``replyParentHasContentWarning``, when warned posts stopped being hidden. A row
+    /// recorded before that has the flag set and nil here, and ``replyParentText`` holds the
+    /// warning instead of the post. `ReplyParentBackfill` rebuilds those from
+    /// ``replyParentPayload``.
+    public var replyParentContentWarning: String?
+
     /// The parent's whole status, JSON-encoded, for the reading pane.
     ///
     /// Opaque `Data` for the reason ``mastodonPayload`` is: only the pane reads it, it is never
@@ -445,14 +453,24 @@ public final class CachedItem {
     /// either way. Use ``record(_:)`` to write, which is what tells the two apart.
     public var replyParent: ReplyParent? {
         guard let replyParentAuthorName, !replyParentAuthorName.isEmpty else { return nil }
+        // Recorded before warned posts were shown, so the text column holds the warning. Drawn as
+        // the warning alone until the backfill rebuilds the row, rather than as the post's words.
+        let isOldWarning = replyParentNeedsRebuild
         return ReplyParent(
             authorName: replyParentAuthorName,
             authorHandle: replyParentAuthorHandle,
             avatarURLString: replyParentAvatarURLString,
-            text: replyParentText ?? "",
-            hasContentWarning: replyParentHasContentWarning,
+            text: isOldWarning ? "" : replyParentText ?? "",
+            contentWarning: isOldWarning ? replyParentText ?? "" : replyParentContentWarning,
             isQuote: replyParentIsQuote
         )
+    }
+
+    /// Whether the parent was recorded with its content warning in place of its text.
+    ///
+    /// See ``replyParentContentWarning``.
+    public var replyParentNeedsRebuild: Bool {
+        replyParentHasContentWarning && replyParentContentWarning == nil
     }
 
     /// Writes what a parent lookup found.
@@ -467,6 +485,7 @@ public final class CachedItem {
             replyParentAvatarURLString = parent.avatarURLString
             replyParentText = parent.text
             replyParentHasContentWarning = parent.hasContentWarning
+            replyParentContentWarning = parent.contentWarning
             replyParentIsQuote = parent.isQuote
             replyParentPayload = payload
         case .unavailable:
@@ -475,6 +494,7 @@ public final class CachedItem {
             replyParentAvatarURLString = nil
             replyParentText = nil
             replyParentHasContentWarning = false
+            replyParentContentWarning = nil
             replyParentIsQuote = false
             replyParentPayload = nil
         }

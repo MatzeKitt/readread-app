@@ -55,6 +55,8 @@ public actor ReplyParentBackfill {
         originClient: @escaping @Sendable (URL) -> MastodonClient = { MastodonClient(instanceURL: $0, accessToken: nil) },
         hasTimeRemaining: @escaping @Sendable () -> Bool = { true }
     ) async throws -> Int {
+        try rebuildWarnedParents(accountID: accountID)
+
         let quotes = try await fillQuotes(
             accountID: accountID,
             client: client,
@@ -70,6 +72,37 @@ public actor ReplyParentBackfill {
             hasTimeRemaining: hasTimeRemaining
         )
         return quotes + replies
+    }
+
+    /// Rebuilds parents behind a content warning that were recorded with the warning as their text.
+    ///
+    /// From the stored payload, so without a request: a warned parent used to be recorded as its
+    /// warning alone, and the row now shows its text with the warning underneath. One without a
+    /// payload is looked up again instead, by the passes after this one.
+    ///
+    /// - Returns: How many rows were rebuilt or reopened.
+    @discardableResult
+    func rebuildWarnedParents(accountID: UUID) throws -> Int {
+        let rows = try modelContext.fetch(FetchDescriptor<CachedItem>(
+            predicate: #Predicate {
+                $0.accountID == accountID
+                    && $0.replyParentHasContentWarning
+                    && $0.replyParentContentWarning == nil
+            }
+        ))
+        guard !rows.isEmpty else { return 0 }
+
+        for row in rows {
+            if let payload = row.replyParentPayload,
+               let status = try? JSONDecoder.mastodon.decode(MastodonStatus.self, from: payload) {
+                row.record(ReplyParentResolver.lookup(for: status, isQuote: row.replyParentIsQuote))
+            } else {
+                row.replyParentAuthorName = nil
+                row.replyParentHasContentWarning = false
+            }
+        }
+        try modelContext.save()
+        return rows.count
     }
 
     /// Re-fetches quote posts that have no answer yet, to find what they quote.

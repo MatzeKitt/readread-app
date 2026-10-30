@@ -141,9 +141,8 @@ struct ReplyParentTests {
         #expect(await transport.urls.last == "https://mastodon.social/api/v1/statuses/5")
     }
 
-    /// The row is where nobody has opted in to a warned post yet, and somebody else's reply is no
-    /// reason to print it.
-    @Test("A warned parent is stored as its warning")
+    /// The row shows a warned parent's text, and prints its warning underneath.
+    @Test("A warned parent keeps its text, with the warning beside it")
     func warnedParent() async throws {
         let page = """
         [\(statusJSON(id: "2", content: "Reply", inReplyTo: "1")),
@@ -156,8 +155,8 @@ struct ReplyParentTests {
             Issue.record("The reply was written without its parent")
             return
         }
-        #expect(parent.hasContentWarning)
-        #expect(parent.text == "Film ending")
+        #expect(parent.contentWarning == "Film ending")
+        #expect(parent.text == "The spoiler itself")
     }
 
     @Test("A deleted parent is recorded as gone")
@@ -237,6 +236,33 @@ struct ReplyParentTests {
         let row = try stored("9", in: container)
         #expect(row?.replyParent?.authorName == "Grace")
         #expect(row?.replyParentPayload != nil)
+    }
+
+    /// A warned parent used to be recorded as its warning alone. Its payload holds the whole post,
+    /// so the row is rebuilt without asking the instance again.
+    @Test("A warned parent recorded as its warning is rebuilt from its payload")
+    func backfillRebuildsWarnedParent() async throws {
+        let parentJSON = statusJSON(id: "5", content: "The ending", spoiler: "Film ending", author: "Grace")
+        let row = storedRow(id: "9", json: statusJSON(id: "9", content: "Agreed", inReplyTo: "5"), inReplyTo: "5")
+        row.replyParentAuthorName = "Grace"
+        row.replyParentText = "Film ending"
+        row.replyParentHasContentWarning = true
+        row.replyParentPayload = Data(parentJSON.utf8)
+
+        // Until then the row draws the warning alone, not the warning as if it were the post.
+        #expect(row.replyParent?.text == "")
+        #expect(row.replyParent?.contentWarning == "Film ending")
+
+        let container = try store([row])
+        let transport = StubTransport()
+
+        try await ReplyParentBackfill(modelContainer: container)
+            .fill(accountID: accountID, client: makeClient(transport))
+
+        let parent = try stored("9", in: container)?.replyParent
+        #expect(parent?.text == "The ending")
+        #expect(parent?.contentWarning == "Film ending")
+        #expect(await transport.requestCount == 0)
     }
 
     @Test("A parent already in the store costs no request")

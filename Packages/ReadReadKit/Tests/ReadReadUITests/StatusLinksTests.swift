@@ -155,11 +155,10 @@ struct StatusLinksTests {
         #expect(StatusLinks.links(offeredFor: item()).map(\.title) == ["this piece — example.com"])
     }
 
-    /// Naming the links would print the hidden post's words into the menu — the one thing a
-    /// content warning exists to prevent.
-    @Test("Nothing is offered behind a content warning")
-    func contentWarningOffersNothing() {
-        #expect(StatusLinks.links(offeredFor: item(warning: "Spoilers")).isEmpty)
+    /// The row shows a warned post's text, so the menu names its links as well.
+    @Test("A post behind a content warning offers its links")
+    func contentWarningOffersLinks() {
+        #expect(StatusLinks.links(offeredFor: item(warning: "Spoilers")).map(\.title) == ["this piece — example.com"])
     }
 
     @Test("Nothing is offered for an article")

@@ -58,8 +58,8 @@ struct RenderableStatus: Identifiable, Sendable {
     var isFavourited: Bool = false
     var isReblogged: Bool = false
 
-    /// Whether the body starts hidden behind a warning.
-    var isHiddenByDefault: Bool { !spoilerText.isEmpty }
+    /// Whether the post has a content warning, which the pane prints under it.
+    var hasContentWarning: Bool { !spoilerText.isEmpty }
 
     var isReply: Bool
 

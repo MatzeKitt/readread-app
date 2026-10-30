@@ -445,9 +445,9 @@ public struct MastodonIngestPlanner: Sendable {
         let millis = status.createdAt.millisecondsSinceEpoch
         let plainText = HTMLText.plainText(from: display.content)
 
-        // A content warning must win in the list. Showing the post's text beside its own warning
-        // would defeat the warning entirely — the list is exactly where the user has not opted in
-        // to seeing it yet.
+        // A warned post keeps its warning as `title` and an empty excerpt, which is how the row
+        // tells the two apart: it shows the post from `contentHTML` and prints the warning under
+        // it. See `CachedItem.isBehindContentWarning`.
         let hasWarning = !display.spoilerText.isEmpty
         let listText = hasWarning ? display.spoilerText : plainText
 
@@ -466,9 +466,7 @@ public struct MastodonIngestPlanner: Sendable {
             urlString: display.url ?? display.uri,
             contentHTML: display.content,
             excerpt: hasWarning ? "" : HTMLText.truncating(plainText, to: 320),
-            // The post's own words even behind a warning. The list still shows only the warning;
-            // this only decides whether a search can find the post, and someone searching for its
-            // words is looking for exactly this one.
+            // The post's own words even behind a warning, so a search for them finds it.
             bodyText: plainText,
             publishedAt: status.createdAt,
             sortKey: SortKey(millis: millis, id: itemID),

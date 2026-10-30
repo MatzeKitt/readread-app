@@ -25,16 +25,18 @@ public struct ReplyParent: Hashable, Sendable {
 
     public var avatarURLString: String?
 
-    /// What the row prints: the parent's text as plain text — or, when the parent is behind a
-    /// content warning, the warning and nothing else.
+    /// What the row prints: the parent's text as plain text, behind a content warning or not.
     ///
-    /// Decided here rather than at the point of display, because getting it wrong prints a post
-    /// its author hid into somebody else's row. Ingest makes the identical choice for a post's own
-    /// list text; see `MastodonIngestPlanner.map`.
+    /// Empty only for a post with no words, or for a warned parent recorded before warned posts
+    /// were shown — see ``CachedItem/replyParent``.
     public var text: String
 
-    /// Whether ``text`` is a content warning rather than the post.
-    public var hasContentWarning: Bool
+    /// The parent's content warning, which the row prints as a note under its text. Nil when it
+    /// has none.
+    public var contentWarning: String?
+
+    /// Whether the parent is behind a content warning.
+    public var hasContentWarning: Bool { contentWarning != nil }
 
     /// Whether this is the post being quoted rather than the post being replied to.
     ///
@@ -47,14 +49,14 @@ public struct ReplyParent: Hashable, Sendable {
         authorHandle: String? = nil,
         avatarURLString: String? = nil,
         text: String,
-        hasContentWarning: Bool = false,
+        contentWarning: String? = nil,
         isQuote: Bool = false
     ) {
         self.authorName = authorName
         self.authorHandle = authorHandle
         self.avatarURLString = avatarURLString
         self.text = text
-        self.hasContentWarning = hasContentWarning
+        self.contentWarning = contentWarning
         self.isQuote = isQuote
     }
 }

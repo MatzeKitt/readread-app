@@ -17,13 +17,12 @@ struct StatusLink: Hashable {
 /// underlined words.
 enum StatusLinks {
 
-    /// The links the row's menu offers for an item: a post's, and none behind a content warning.
+    /// The links the row's menu offers for an item: a post's, behind a content warning or not.
     ///
-    /// None behind a warning for the reason the row hides its link preview there: the links' text
-    /// is part of what the warning hides. The post itself is one tap away. And none for an
+    /// The row shows a warned post's text, links and all, so the menu names them too. None for an
     /// article, whose excerpt is a sample of the page rather than something it says to the reader.
     static func links(offeredFor item: CachedItem) -> [StatusLink] {
-        guard item.kind == .status, !item.isBehindContentWarning else { return [] }
+        guard item.kind == .status else { return [] }
         return links(inStatusHTML: item.contentHTML, excluding: item.url)
     }
 

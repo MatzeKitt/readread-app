@@ -50,23 +50,24 @@ struct ItemRow: View {
     /// mismatch is visible in a way the density is not.
     var lineHeight: Double
 
-    /// Whether this post is behind a content warning. See ``CachedItem/isBehindContentWarning``.
-    private var hasContentWarning: Bool {
-        item.isBehindContentWarning
+    /// The post's content warning, printed as a note under the post. Nil when it has none.
+    ///
+    /// A note rather than a curtain: the post is shown straight away, and the warning says what it
+    /// is about. Read from `title`, where ingest stores a warned post's warning — see
+    /// ``CachedItem/isBehindContentWarning``.
+    private var contentWarning: String? {
+        guard item.isBehindContentWarning, !item.title.isEmpty else { return nil }
+        return item.title
+    }
+
+    /// What to print if the post's markup will not parse. Not a warned post's `title`, which is
+    /// its warning and already has a line of its own.
+    private var plainText: String {
+        contentWarning == nil ? item.title : ""
     }
 
     /// The post's text, with its formatting, from the shared parse cache.
-    ///
-    /// Behind a content warning this is the warning itself, plain, and the post's markup is never
-    /// touched. Rendering `contentHTML` unconditionally — as the first version of this did —
-    /// printed the hidden post straight into the timeline, which is the one thing a content
-    /// warning exists to prevent.
     private var statusText: AttributedString {
-        // The warning text itself, and capped like any other: a content warning is written by
-        // hand and is usually a line, but nothing stops it being an essay.
-        guard !hasContentWarning else {
-            return StatusTextCache.clipped(AttributedString(item.title))
-        }
         // Without the "RE: <link>" line when the quoted post is drawn above — the line is only
         // there for apps that cannot draw it. Cached under its own key, so a row that gains its
         // quote while on screen does not keep the parse that still had the line in it.
@@ -74,32 +75,25 @@ struct ItemRow: View {
             return StatusTextCache.shared.text(
                 id: item.id + "#quoted",
                 html: QuoteFallback.removing(from: item.contentHTML),
-                plain: item.title
+                plain: plainText
             )
         }
-        return StatusTextCache.shared.text(id: item.id, html: item.contentHTML, plain: item.title)
+        return StatusTextCache.shared.text(id: item.id, html: item.contentHTML, plain: plainText)
     }
 
-    /// The link preview to draw under the post, if there is one to draw.
-    ///
-    /// Suppressed behind a content warning, for the same reason the media is: the card carries the
-    /// linked page's own headline and picture, and printing those beside the warning would answer
-    /// the question the author asked not to be answered — a post warning for a news story and
-    /// linking to it would have the story's headline sitting directly underneath.
-    private var linkCard: LinkCard? {
-        hasContentWarning ? nil : item.linkCard
+    /// Whether the post has any words to print. A warned post's `title` is its warning, so its
+    /// text is looked for in the post itself.
+    private var hasText: Bool {
+        contentWarning == nil ? !item.title.isEmpty : !statusText.characters.isEmpty
     }
 
     #if DEBUG
     /// Exposed because nil has to read as "nothing to show" here and not as `true`, and a filled
     /// star on a post nobody liked is a claim about the reader.
     var engagementForTesting: EngagementCounts { engagement }
-    /// Exposed so the content-warning rule covers the link preview too, which carries the linked
-    /// page's headline and is therefore part of what a warning hides.
-    var linkCardForTesting: LinkCard? { linkCard }
-    /// Exposed so the content-warning rule can be tested. It decides whether a hidden post is
-    /// printed into the timeline, which is not something to leave to inspection.
-    var hasContentWarningForTesting: Bool { hasContentWarning }
+    /// Exposed because the warning is read out of `title`, which is the post's text everywhere
+    /// else, and reading it wrongly prints the warning as the post or the post as a warning.
+    var contentWarningForTesting: String? { contentWarning }
     /// Exposed because the three-state column behind it is easy to read wrongly, and reading it
     /// wrongly attributes a post to somebody who had nothing to do with it.
     var boostedByForTesting: String? { boostedBy }
@@ -177,7 +171,7 @@ struct ItemRow: View {
             // weight and shown whole. An article's headline is a headline and stays bold and
             // clipped, with its excerpt underneath.
             if item.kind == .status {
-                if !item.title.isEmpty {
+                if hasText {
                     // `.subheadline`, the same style as an article's excerpt, because that is what
                     // this is: the row's *text*, under the row's heading. Set at `.body` it came
                     // out the size of an article headline and answered to the heading preference
@@ -215,17 +209,23 @@ struct ItemRow: View {
                         // before the flag existed has `nil` here, and treating that as "safe"
                         // would show media the author asked to have hidden. `StatusBackfill` fills
                         // it in, after which the real answer applies.
-                        // A content warning hides the media too. The author put the post behind
-                        // a warning; showing its pictures beside the warning text would answer
-                        // the question they asked not to be answered.
-                        isSensitive: hasContentWarning || (item.isSensitive ?? true)
+                        // A content warning alone does not hide them: the post is shown with its
+                        // warning underneath, and the author's own sensitive flag decides the
+                        // media. Mastodon sets it on every warned post with media anyway.
+                        isSensitive: item.isSensitive ?? true
                     )
                     .padding(.top, 2)
                 }
 
-                if let card = linkCard {
+                if let card = item.linkCard {
                     LinkPreviewCard(card: card, scale: bodyScale)
                         .padding(.top, 4)
+                }
+
+                // Under the post rather than in front of it, so the post is read straight away
+                // and the warning still says what it is about.
+                if let contentWarning {
+                    ContentWarningNotice(text: contentWarning, scale: bodyScale)
                 }
             } else {
                 Text(item.title)
@@ -481,12 +481,11 @@ extension CachedItem {
     /// Whether this is a post behind a content warning.
     ///
     /// Derived rather than stored, from what ingest already does: a warned status has its
-    /// *spoiler* text as `title` and an empty `excerpt`, precisely so the list can show the
-    /// warning without showing the post. An empty post with no warning also lands here, and has
-    /// nothing to reveal either way.
+    /// *spoiler* text as `title` and an empty `excerpt`. An empty post with no warning also lands
+    /// here, with an empty `title`, and has no warning to print.
     ///
-    /// On the item rather than the row because the row's context menu has to agree with it: the
-    /// menu names the post's links, and their text is part of what the warning hides.
+    /// On the item rather than the row because more than the row reads `title`, and has to know
+    /// when it is the warning rather than the post's text.
     var isBehindContentWarning: Bool {
         kind == .status && excerpt.isEmpty
     }
@@ -556,15 +555,15 @@ struct ReplyParentPreview: View {
                             : Text("In reply to \(parent.authorName)")
                     )
 
-                if parent.hasContentWarning {
-                    // The warning, never the post: the parent's author hid it, and somebody else's
-                    // reply is no reason to show it.
-                    Label(parent.text, systemImage: "eye.slash")
-                        .scaledFont(.subheadline, scale: bodyScale, lineHeight: lineHeight)
-                        .lineLimit(textLineLimit)
-                } else if !parent.text.isEmpty {
+                if !parent.text.isEmpty {
                     Text(parent.text)
                         .scaledFont(.subheadline, scale: bodyScale, lineHeight: lineHeight)
+                        .lineLimit(textLineLimit)
+                }
+
+                // Under the parent's text, as under a post's own.
+                if let contentWarning = parent.contentWarning {
+                    ContentWarningNotice(text: contentWarning, scale: bodyScale)
                         .lineLimit(textLineLimit)
                 }
             }

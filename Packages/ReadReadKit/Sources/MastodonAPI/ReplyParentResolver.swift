@@ -127,12 +127,9 @@ public struct ReplyParentResolver: Sendable {
     public static func lookup(for status: MastodonStatus, isQuote: Bool = false) -> ReplyParentLookup {
         let display = status.displayStatus
 
-        // The warning instead of the post, exactly as a post's own list text is chosen in
-        // `MastodonIngestPlanner.map`: the row is where nobody has opted in to seeing it yet.
-        let hasWarning = !display.spoilerText.isEmpty
-        let text = hasWarning
-            ? display.spoilerText
-            : HTMLText.truncating(HTMLText.plainText(from: display.content), to: 320)
+        // The post's text whether or not it is behind a warning, as a post's own row shows it. The
+        // warning goes with it, for the row to print underneath.
+        let text = HTMLText.truncating(HTMLText.plainText(from: display.content), to: 320)
 
         // Never empty, because empty is the column's sentinel for *no parent*.
         let name = display.account.bestDisplayName
@@ -141,7 +138,7 @@ public struct ReplyParentResolver: Sendable {
             authorHandle: display.account.acct,
             avatarURLString: display.account.avatarURLString,
             text: text,
-            hasContentWarning: hasWarning,
+            contentWarning: display.spoilerText.isEmpty ? nil : display.spoilerText,
             isQuote: isQuote
         )
         return .found(parent, payload: try? JSONEncoder.mastodon.encode(display))
