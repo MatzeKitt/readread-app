@@ -20,6 +20,21 @@ struct DoubledURLTests {
         """)
     }
 
+    /// The same feed as FreshRSS serves it: SimplePie took the inner scheme's colon for an empty
+    /// port and dropped it (issue #10).
+    @Test("A doubled URL whose inner scheme lost its colon is repaired with the colon restored")
+    func repairsWeeblyImageThroughFreshRSS() {
+        let html = """
+        <img src="https://49114053-221246053734753775.preview.editmysite.comhttps//heyeased.weebly.com\
+        /uploads/4/9/1/1/49114053/newpoordock_orig.png" width="330" height="400">
+        """
+
+        #expect(DoubledURL.repairing(html) == """
+        <img src="https://heyeased.weebly.com/uploads/4/9/1/1/49114053/newpoordock_orig.png" \
+        width="330" height="400">
+        """)
+    }
+
     @Test("Every doubled URL in the markup is repaired, whatever the schemes")
     func repairsEveryOccurrence() {
         let html = #"<img src="http://cdn.example.comhttps://a.example/1.png"><img src="HTTPS://cdn.example.comhttp://b.example/2.png">"#
@@ -34,6 +49,7 @@ struct DoubledURLTests {
         "https://web.archive.org/web/2026/https://a.example/post",
         "<p>See https://a.example and https://b.example.</p>",
         "<img src=\"/uploads/relative.png\">",
+        "https://a.example//double/slash/path",
     ])
     func leavesOrdinaryURLsAlone(_ text: String) {
         #expect(DoubledURL.repairing(text) == text)
@@ -43,6 +59,16 @@ struct DoubledURLTests {
     func sanitizerRepairs() {
         let document = HTMLParser.parse(
             #"<p><img src="https://cdn.example.comhttps://site.example/a.png" alt="A"></p>"#
+        )
+        let html = HTMLSanitizer.sanitize(document, baseURL: URL(string: "https://site.example/post"))
+
+        #expect(html.contains(#"<img alt="A" src="https://site.example/a.png">"#))
+    }
+
+    @Test("The full-page sanitiser loads the inner URL when its colon is missing")
+    func sanitizerRepairsMissingColon() {
+        let document = HTMLParser.parse(
+            #"<p><img src="https://cdn.example.comhttps//site.example/a.png" alt="A"></p>"#
         )
         let html = HTMLSanitizer.sanitize(document, baseURL: URL(string: "https://site.example/post"))
 

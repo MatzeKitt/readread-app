@@ -8,16 +8,23 @@ import Foundation
 /// parses as a URL on the host `…editmysite.comhttps`, which does not exist, and the image never
 /// loads. The page itself has the right URL; only the feed is broken.
 ///
-/// The inner URL is the one that works, so the repair drops everything before it. A host running
-/// straight into `http://` or `https://` is never a real address, which is what makes this safe to
-/// apply to any markup rather than to one publisher's.
+/// Through FreshRSS the inner scheme arrives without its colon:
+/// `https://…editmysite.comhttps//heyeased.weebly.com/…`. SimplePie, which sanitizes the content,
+/// reads the authority `…editmysite.comhttps:` as a host with an empty port, stores that port as
+/// `0` and leaves it out when it writes the URL back — taking the colon with it.
+///
+/// The inner URL is the one that works, so the repair drops everything before it and puts the
+/// colon back if it went missing. A host running straight into `http://`, `https://` or their
+/// colonless forms is never a real address, which is what makes this safe to apply to any markup
+/// rather than to one publisher's.
 public enum DoubledURL {
 
-    /// The outer scheme and host, up to the point where the second scheme starts. The host stops
-    /// at the first `/`, so a URL that merely *contains* another one — a share link with
-    /// `?url=https://…` — is left alone.
+    /// The outer scheme and host, followed by the second scheme with or without its colon, which
+    /// is captured so the template can write it back with one. The host stops at the first `/`,
+    /// so a URL that merely *contains* another one — a share link with `?url=https://…` — is left
+    /// alone.
     private static let outerPrefix = try? NSRegularExpression(
-        pattern: #"\bhttps?://[^\s"'<>/]+?(?=https?://)"#,
+        pattern: #"\bhttps?://[^\s"'<>/]+?(https?):?//"#,
         options: [.caseInsensitive]
     )
 
@@ -27,7 +34,7 @@ public enum DoubledURL {
         return outerPrefix.stringByReplacingMatches(
             in: text,
             range: NSRange(text.startIndex..., in: text),
-            withTemplate: ""
+            withTemplate: "$1://"
         )
     }
 }
