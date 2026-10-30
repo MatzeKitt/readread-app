@@ -4,67 +4,6 @@ import Testing
 
 @testable import ReadReadUI
 
-/// Whether a row draws the link preview.
-///
-/// `@MainActor` because `ItemRow` is a `View`. See `StatusMediaLayoutTests`.
-@Suite("Item row link preview")
-@MainActor
-struct ItemRowLinkCardTests {
-
-    private let card = LinkCard(
-        urlString: "https://www.example.com/a-piece",
-        title: "The headline of the linked piece",
-        summary: "A blurb.",
-        imageURLString: "https://cdn.example.com/og.png"
-    )
-
-    /// - Parameter warning: The spoiler text. Ingest stores a warned post's *warning* as the title
-    ///   and leaves the excerpt empty, precisely so a list can show the warning without the post —
-    ///   which is what `hasContentWarning` reads.
-    private func post(warning: String? = nil, card: LinkCard?) -> CachedItem {
-        let key = SortKey(millis: 1_700_000_000_000, id: "s")
-        return CachedItem(
-            id: "s",
-            sourceID: "mastodon:acct:home",
-            accountID: UUID(),
-            kind: .status,
-            title: warning ?? "Look at this.",
-            contentHTML: "<p>Look at this.</p>",
-            excerpt: warning == nil ? "Look at this." : "",
-            publishedAt: .now,
-            sortKey: key,
-            ingestKey: key,
-            linkCard: card
-        )
-    }
-
-    @Test("An ordinary post shows its link preview")
-    func ordinaryPostShowsCard() {
-        let row = ItemRow(item: post(card: card), showsLateArrival: false)
-
-        #expect(row.linkCardForTesting == card)
-    }
-
-    /// The case worth a test. A card carries the linked page's own headline and picture, so
-    /// printing it under a content warning answers the question the author asked not to be
-    /// answered — a post warning for a news story and linking to it would have the story's
-    /// headline sitting directly underneath the warning.
-    @Test("A post behind a content warning shows no link preview")
-    func warnedPostHidesCard() {
-        let row = ItemRow(item: post(warning: "Politics", card: card), showsLateArrival: false)
-
-        #expect(row.hasContentWarningForTesting)
-        #expect(row.linkCardForTesting == nil)
-    }
-
-    @Test("A post with no link has nothing to show")
-    func cardlessPostShowsNothing() {
-        let row = ItemRow(item: post(card: nil), showsLateArrival: false)
-
-        #expect(row.linkCardForTesting == nil)
-    }
-}
-
 /// What the row draws for a post the reader has already liked or boosted.
 ///
 /// The state used to live only in the context menu's wording, which meant the only way to find out

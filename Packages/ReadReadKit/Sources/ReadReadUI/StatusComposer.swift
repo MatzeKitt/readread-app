@@ -154,7 +154,7 @@ final class StatusComposer {
             urlString: target.statusURLString,
             title: ReplySubscriptionEditing.suggestedTitle(
                 authorName: post.account.bestDisplayName,
-                text: item.isBehindContentWarning ? post.spoilerText : HTMLText.plainText(from: post.content)
+                text: HTMLText.plainText(from: post.content)
             ),
             target: target
         )
@@ -196,7 +196,11 @@ final class StatusComposer {
             parentVisibility: MastodonVisibility(statusValue: subject.visibility),
             authorName: subject.account.bestDisplayName,
             authorHandle: subject.account.acct,
-            excerpt: item.excerpt.isEmpty ? item.title : item.excerpt,
+            // A warned post's `title` is its warning, and its excerpt is empty. The post's own words
+            // are what a reply answers, so they are quoted instead.
+            excerpt: item.isBehindContentWarning
+                ? HTMLText.truncating(HTMLText.plainText(from: subject.content), to: 320)
+                : item.excerpt,
             mentions: mentions(of: subject)
         )
     }

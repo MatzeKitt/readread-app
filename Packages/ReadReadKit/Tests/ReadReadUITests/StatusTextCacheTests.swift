@@ -47,17 +47,21 @@ struct StatusTextCacheTests {
     }
 }
 
-/// The content warning is consent, and the timeline is where it is easiest to break: the row shows
-/// the *warning* as its text, and rendering the post's markup instead would print the hidden post
-/// straight into the list. The first version of the formatting change did exactly that.
+/// A warned post is shown straight away, with its warning printed under it.
+///
+/// Easy to get wrong because ingest keeps the warning in `title`, which is the post's text for
+/// every other post: read the wrong way, the row prints the warning as the post, or the post's
+/// text twice and no warning at all.
 @Suite("Content warnings in the timeline")
 @MainActor
 struct ContentWarningRowTests {
 
     private func status(title: String, excerpt: String, html: String) -> CachedItem {
-        let key = SortKey(millis: 1_700_000_000_000, id: "cw")
+        // An id of its own per row, because the parse cache is keyed by it and shared.
+        let id = "cw-\(UUID())"
+        let key = SortKey(millis: 1_700_000_000_000, id: id)
         return CachedItem(
-            id: "cw",
+            id: id,
             sourceID: "mastodon:acct:home",
             accountID: UUID(),
             kind: .status,
@@ -70,10 +74,9 @@ struct ContentWarningRowTests {
         )
     }
 
-    @Test("A warned post shows the warning, never the post")
-    func warnedPostHidesItsContent() {
-        // Ingest writes a warned status this way: the spoiler as the title, and an empty excerpt
-        // precisely so the list can show one without the other.
+    @Test("A warned post shows the post, and its warning separately")
+    func warnedPostShowsItsContent() {
+        // Ingest writes a warned status this way: the spoiler as the title, and an empty excerpt.
         let item = status(
             title: "CW: election",
             excerpt: "",
@@ -81,10 +84,10 @@ struct ContentWarningRowTests {
         )
         let row = ItemRow(item: item, showsLateArrival: false)
 
-        #expect(row.hasContentWarningForTesting)
+        #expect(row.contentWarningForTesting == "CW: election")
         let shown = String(row.statusTextForTesting.characters)
-        #expect(shown == "CW: election")
-        #expect(!shown.contains("hidden opinion"))
+        #expect(shown.contains("hidden opinion"))
+        #expect(!shown.contains("CW: election"))
     }
 
     @Test("An ordinary post shows its formatted content")
@@ -96,7 +99,7 @@ struct ContentWarningRowTests {
         )
         let row = ItemRow(item: item, showsLateArrival: false)
 
-        #expect(!row.hasContentWarningForTesting)
+        #expect(row.contentWarningForTesting == nil)
         #expect(String(row.statusTextForTesting.characters).contains("Some words about a thing."))
     }
 }

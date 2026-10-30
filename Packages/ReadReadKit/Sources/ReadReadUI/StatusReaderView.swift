@@ -347,9 +347,9 @@ struct StatusCard: View {
     /// the row is what the focused card counts from.
     var row: CachedItem?
 
-    /// Whether the reader has chosen to see past the content warning.
+    /// Whether the reader has chosen to see the post's sensitive media.
     ///
-    /// Per-card and reset whenever the status changes, so revealing one post's warning never
+    /// Per-card and reset whenever the status changes, so revealing one post's media never
     /// reveals another's.
     @State private var isRevealed = false
 
@@ -405,10 +405,12 @@ struct StatusCard: View {
 
             header
 
-            if status.isHiddenByDefault, !isRevealed {
-                warning
-            } else {
-                body(of: status)
+            body(of: status)
+
+            // Under the post rather than in front of it, as in the timeline row: the post is read
+            // straight away, and the warning still says what it is about.
+            if status.hasContentWarning {
+                ContentWarningNotice(text: status.spoilerText, scale: contentScale)
             }
 
             if engagement.hasAny {
@@ -427,7 +429,7 @@ struct StatusCard: View {
         .opacity(emphasis == .context ? 0.85 : 1)
         .task(id: status.id) {
             // A recycled card must not carry the previous post's revealed state onto a new one —
-            // that would show a content warning's contents without anyone asking.
+            // that would show sensitive media without anyone asking.
             isRevealed = false
         }
     }
@@ -522,20 +524,6 @@ struct StatusCard: View {
         }
     }
 
-    private var warning: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(status.spoilerText, systemImage: "eye.slash")
-                .scaledFont(.callout, weight: .medium, scale: contentScale, lineHeight: contentLineHeight)
-
-            Button("Show Post") { isRevealed = true }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(.quaternary, in: .rect(cornerRadius: 10))
-    }
-
     @ViewBuilder
     private func body(of status: RenderableStatus) -> some View {
         EmojiText(attributedContent(of: status), emojis: status.emojis, scale: contentScale)
@@ -574,18 +562,15 @@ struct StatusCard: View {
         if !status.attachments.isEmpty {
             AttachmentGrid(
                 attachments: status.attachments,
-                // Sensitive media stays blurred until asked for, exactly like the text warning.
-                // A thread is full of other people's posts, so this is not a hypothetical.
+                // Sensitive media stays blurred until asked for. A thread is full of other
+                // people's posts, so this is not a hypothetical.
                 isSensitive: status.isSensitive && !isRevealed,
                 onReveal: { isRevealed = true }
             )
         }
 
         // The same card the timeline row draws, in the same place in the post — under the text and
-        // the media. Reachable here only because this is `body(of:)`, which a warned post does not
-        // call until it is revealed: the card carries the linked page's own headline and picture,
-        // so printing it beside a content warning would answer the question the author asked not
-        // to be answered. The row makes the identical argument in its own `linkCard`.
+        // the media.
         if let card = status.linkCard, card.isShowable {
             // Opening the link is the card's own job now, in the row as much as here — see
             // ``LinkPreviewCard``.

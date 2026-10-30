@@ -364,16 +364,16 @@ struct MastodonIngestPlannerTests {
         ))
     }
 
-    /// The list is exactly where the user has not opted in to seeing warned content. Showing the
-    /// post's text next to its own content warning would defeat the warning entirely.
-    @Test("A content warning replaces the post text in the list")
-    func contentWarningReplacesListText() async throws {
+    /// The row tells a warned post by its empty excerpt, shows the post from its markup and prints
+    /// the warning, kept as the title, underneath.
+    @Test("A content warning is kept as the title")
+    func contentWarningIsKeptAsTitle() async throws {
         let warned = """
         [{
             "id": "1104512345678500",
             "uri": "https://mastodon.social/users/a/statuses/500",
             "created_at": "2026-09-03T10:00:00.000Z",
-            "content": "<p>The spoiler itself, which must not leak into the list.</p>",
+            "content": "<p>The post itself.</p>",
             "visibility": "public", "sensitive": true, "spoiler_text": "spoilers for the finale",
             "media_attachments": [], "reblog": null,
             "in_reply_to_id": null, "in_reply_to_account_id": null,
@@ -395,11 +395,8 @@ struct MastodonIngestPlannerTests {
 
         let item = await sink.items.values.first!
         #expect(item.title == "spoilers for the finale")
-        // Neither the title nor the excerpt may carry the warned text.
-        #expect(!item.title.contains("must not leak"))
         #expect(item.excerpt.isEmpty)
-        // The real content is still stored, for the detail view to reveal on request.
-        #expect(item.contentHTML.contains("must not leak"))
+        #expect(item.contentHTML.contains("The post itself."))
     }
 
     @Test("Attachments map, and ones still processing are dropped")
