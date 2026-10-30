@@ -24,6 +24,7 @@ public enum PositionCommit {
         scope: ScopeID,
         itemID: String,
         deviceID: String,
+        updatedAt: Date = .now,
         in context: ModelContext
     ) throws -> Bool {
         var descriptor = FetchDescriptor<CachedItem>(predicate: #Predicate { $0.id == itemID })
@@ -36,6 +37,7 @@ public enum PositionCommit {
             scope,
             to: item.sortKey,
             deviceID: deviceID,
+            updatedAt: updatedAt,
             in: context
         )
         // Queued in the same transaction as the positions themselves, so one save commits the
@@ -71,12 +73,13 @@ public actor PositionWriter {
     /// - Returns: Whether a position was written. `false` means the item had left the store, and
     ///   the caller should not record it as written.
     @discardableResult
-    public func write(scope: ScopeID, itemID: String, deviceID: String) async -> Bool {
+    public func write(scope: ScopeID, itemID: String, deviceID: String, updatedAt: Date = .now) async -> Bool {
         do {
             guard try PositionCommit.write(
                 scope: scope,
                 itemID: itemID,
                 deviceID: deviceID,
+                updatedAt: updatedAt,
                 in: modelContext
             ) else {
                 return false
