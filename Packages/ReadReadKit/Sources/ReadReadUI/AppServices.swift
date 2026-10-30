@@ -424,9 +424,9 @@ public final class AppServices {
     /// - Returns: Whether anything was written. `false` means the item had left the store, and the
     ///   caller should not record the position as reported.
     @discardableResult
-    public func commitPosition(scope: ScopeID, itemID: String) async -> Bool {
+    public func commitPosition(scope: ScopeID, itemID: String, settledAt: Date = .now) async -> Bool {
         let deviceID = DeviceIdentity.current.id
-        guard await positions.write(scope: scope, itemID: itemID, deviceID: deviceID) else {
+        guard await positions.write(scope: scope, itemID: itemID, deviceID: deviceID, updatedAt: settledAt) else {
             return false
         }
         positionSettled()

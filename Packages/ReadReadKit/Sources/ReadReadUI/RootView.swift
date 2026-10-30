@@ -84,10 +84,20 @@ public struct RootView: View {
     @State private var isShowingSettings = false
     #endif
 
+    /// Which column a collapsed split view shows — on iPhone, which screen is on top.
+    ///
+    /// Driven by hand because the timeline is not a `List`. A split view only pushes the detail on
+    /// its own when a `List`'s selection changes, so selecting a row in the timeline's collection
+    /// view changed the selection and showed nothing. Setting this does the push, and noticing it
+    /// go back to the content column is what clears the selection again, so the same row can be
+    /// tapped a second time.
+    @State private var compactColumn = NavigationSplitViewColumn.content
+
     public init() {}
 
     public var body: some View {
-        NavigationSplitView {
+        // Ignored on the Mac, which never collapses. See `compactColumn`.
+        NavigationSplitView(preferredCompactColumn: $compactColumn) {
             SidebarView(selectedScope: $selectedScope, counts: counts)
                 #if !os(macOS)
                 // macOS gets the standard `Settings` scene from the app menu instead. On iOS
@@ -324,6 +334,14 @@ public struct RootView: View {
             // making every launch begin with a click.
             focusedColumn = .timeline
         }
+        #if !os(macOS)
+        .onChange(of: selectedItemID) { _, itemID in
+            if itemID != nil { compactColumn = .detail }
+        }
+        .onChange(of: compactColumn) { _, column in
+            if column != .detail { selectedItemID = nil }
+        }
+        #endif
         // Changing scope must clear the detail column: leaving the previous article on screen
         // beside a timeline that has changed underneath it reads as a rendering bug.
         .onChange(of: selectedScope) {

@@ -102,6 +102,10 @@ public enum ThresholdService {
     /// views rather than places in the tree, and their markers move for reasons of their own — or,
     /// for `.filtered`, not at all.
     ///
+    /// - Parameter updatedAt: When the reader came to rest there, which is what the rows claim.
+    ///   Passed in rather than read from the clock here, because the write can land well after the
+    ///   settle — on the way out of the app, say — and stamping the later time would date the
+    ///   position after positions other devices reported in between.
     /// - Returns: Every row it wrote, so a caller can queue them all for sync in the same
     ///   transaction as the change. See ``setPosition(_:to:deviceID:in:)`` for why each write is
     ///   unconditional.
@@ -110,6 +114,7 @@ public enum ThresholdService {
         _ scope: ScopeID,
         to target: SortKey,
         deviceID: String,
+        updatedAt: Date = .now,
         in context: ModelContext
     ) throws -> [PositionMark] {
         // One fetch of this device's rows, rather than a keyed lookup per scope: a store with
@@ -128,7 +133,7 @@ public enum ThresholdService {
                 rows[scope.rawValue] = row
             }
             row.markSortKey = target
-            row.updatedAt = .now
+            row.updatedAt = updatedAt
             written.append(row)
         }
 

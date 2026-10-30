@@ -186,6 +186,24 @@ final class NotificationRegistration {
         })
     }
 
+    /// Registers `handler`, delivered on the main actor with what `extract` took from the
+    /// notification on the posting thread — a `Notification` itself cannot cross to the actor.
+    func observe<Payload: Sendable>(
+        _ name: Notification.Name,
+        extract: @escaping @Sendable (Notification) -> Payload,
+        handler: @escaping @MainActor (Payload) -> Void
+    ) {
+        observers.append(NotificationCenter.default.addObserver(
+            forName: name,
+            object: nil,
+            queue: nil
+        ) { notification in
+            let payload = extract(notification)
+            // Hopped rather than asserted, for the reason given in `observe(_:handler:)`.
+            Task { @MainActor in handler(payload) }
+        })
+    }
+
     /// Registers `handler` for delivery in the same run-loop turn the notification is posted in.
     ///
     /// For the notifications where a turn is too late. ``observe(_:handler:)`` hops onto the main

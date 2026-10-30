@@ -157,3 +157,28 @@ private struct PlainListSelection: View {
     var body: some View { Color.clear }
 }
 #endif
+
+/// The line between two timeline items.
+enum RowSeparator {
+
+    /// Whether a line is drawn under `row`.
+    ///
+    /// Only *between* items, so never under the last one, and never against the selected item on
+    /// either side: its marker already sets it apart, and a line running along the marker's edge
+    /// reads as a second outline.
+    static func isShown(below row: Int, count: Int, selectedRow: Int?) -> Bool {
+        guard row >= 0, row < count - 1 else { return false }
+        guard let selectedRow else { return true }
+        return row != selectedRow && row + 1 != selectedRow
+    }
+
+    /// The rows whose line has to be redrawn when the selection moves between these two.
+    static func rowsAffected(bySelectionChangeFrom old: Int?, to new: Int?) -> Set<Int> {
+        var rows = Set<Int>()
+        for selected in [old, new].compactMap({ $0 }) {
+            rows.insert(selected)
+            rows.insert(selected - 1)
+        }
+        return rows.filter { $0 >= 0 }
+    }
+}
