@@ -141,7 +141,7 @@ struct TimelineCollection: UIViewRepresentable {
 
             let environment = environment
             let separatorInset = cell.directionalLayoutMargins.leading
-            let makeContent = { [weak self] (isSelected: Bool) -> UIContentConfiguration in
+            let makeContent = { [weak self] (isSelected: Bool) -> any UIContentConfiguration in
                 let showsSeparator = self?.showsSeparator(below: itemID) ?? false
                 return UIHostingConfiguration {
                     rowContent(item, isSelected)
